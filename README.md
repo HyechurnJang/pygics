@@ -1,2 +1,2 @@
 # pygics
-Python Common Library
+Python Service Library
