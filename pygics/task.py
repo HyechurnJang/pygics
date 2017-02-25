@@ -81,8 +81,8 @@ class Scheduler(Thread):
         sleep_time = self._pygics_sched_tick - (end_time - start_time)
         if sleep_time > 0: time.sleep(sleep_time)
             
-    def register(self, task):
-        self._pygics_sched_reg.put(task)
+    def register(self, *tasks):
+        for task in tasks: self._pygics_sched_reg.put(task)
         
     def unregister(self, task):
         sw = self._pygics_thread.sw
