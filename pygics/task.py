@@ -5,88 +5,107 @@ Created on 2017. 1. 24.
 '''
 
 import time
-import threading
-try: from Queue import Queue
-except: from queue import Queue
+import gevent
+import gevent.queue
+import gevent.lock
+
+#===============================================================================
+# Processing Utils
+#===============================================================================
+class Time:
+    
+    @classmethod
+    def sleep(cls, sec): gevent.sleep(sec)
+    
+class Queue(gevent.queue.Queue):
+    
+    def __init__(self, *argv, **kargs):
+        gevent.queue.Queue.__init__(self, *argv, **kargs)
+
+class Lock(gevent.lock.Semaphore):
+    
+    def __init__(self, *argv, **kargs):
+        gevent.lock.Semaphore.__init__(self, *argv, **kargs)
 
 #===============================================================================
 # Thread
 #===============================================================================
-class Thread:
+
+class Task:
     
-    class ThreadWrapper(threading.Thread):
-        
-        def __init__(self, pt):
-            threading.Thread.__init__(self)
-            self.pt = pt
-            self.sw = False
-        
-        def run(self):
-            while self.sw: self.pt.thread()
+    def __init__(self, tick=0, delay=0, debug=False):
+        self._pygics_thread = None
+        self._pygics_thread_sw = False
+        self._pygics_thread_tick = tick
+        self._pygics_thread_delay = delay
+        self._pygics_thread_debug = debug
     
-    def __init__(self):
-        self._pygics_thread = Thread.ThreadWrapper(self)
-        
+    def __thread_wrapper__(self):
+        if self._pygics_thread_delay > 0: Time.sleep(self._pygics_thread_delay)
+        while self._pygics_thread_sw:
+            if self._pygics_thread_tick > 0:
+                start_time = time.time()
+                try: self.run()
+                except Exception as e:
+                    if self._pygics_thread_debug: print('[Error]Task:%s' % str(e))
+                end_time = time.time()
+                sleep_time = self._pygics_thread_tick - (end_time - start_time)
+                if sleep_time > 0: Time.sleep(sleep_time)
+                else:
+                    if self._pygics_thread_debug: print('[Warning]Task:Processing Time Over Tick')
+            else:
+                try: self.run()
+                except Exception as e:
+                    if self._pygics_thread_debug: print('[Error]Task:%s' % str(e))
+    
     def start(self):
-        if not self._pygics_thread.sw:
-            self._pygics_thread.sw = True
-            self._pygics_thread.start()
+        if self._pygics_thread == None:
+            self._pygics_thread_sw = True
+            self._pygics_thread = gevent.spawn(self.__thread_wrapper__)
+        return self
     
     def stop(self):
-        if self._pygics_thread.sw:
-            self._pygics_thread.sw = False
-            try: self._pygics_thread._Thread__stop()
-            except:
-                try: self._pygics_thread._stop()
-                except:
-                    try: self._pygics_thread.__stop()
-                    except: pass
-            self._pygics_thread.join()
+        if self._pygics_thread != None:
+            self._pygics_thread_sw = False
+            gevent.kill(self._pygics_thread)
+            gevent.joinall([self._pygics_thread])
+            self._pygics_thread = None
+        return self
         
-    def thread(self): pass
+    def run(self):
+        pass
 
-#===============================================================================
-# Scheduler
-#===============================================================================
-class Task:
-    def __init__(self, tick):
-        self._pygics_task_tick = tick
-        self._pygics_task_cur = 0
+class Burst:
+    
+    def __init__(self, debug=False):
+        self.methods = []
+        self.args = []
+        self.kargs = []
+        self.length = 0
+        self.debug = debug
         
-    def __pygics_sched_wrapper__(self, tick):
-        self._pygics_task_cur += tick
-        if self._pygics_task_cur >= self._pygics_task_tick:
-            self._pygics_task_cur = 0
-            self.task()
-            
-    def task(self): pass
-
-class Scheduler(Thread):
+    def register(self, method, *argv, **kargs):
+        self.methods.append(method)
+        self.args.append(argv)
+        self.kargs.append(kargs)
+        self.length += 1
+        return self
     
-    def __init__(self, tick):
-        Thread.__init__(self)
-        self._pygics_sched_tick = tick
-        self._pygics_sched_q = []
-        self._pygics_sched_reg = Queue()
+    def __call__(self, method, *argv, **kargs):
+        return self.register(method, *argv, **kargs)
     
-    def thread(self):
-        start_time = time.time()
-        while not self._pygics_sched_reg.empty():
-            task = self._pygics_sched_reg.get()
-            self._pygics_sched_q.append(task)
-        for task in self._pygics_sched_q:
-            try: task.__pygics_sched_wrapper__(self._pygics_sched_tick)
-            except: continue
-        end_time = time.time()
-        sleep_time = self._pygics_sched_tick - (end_time - start_time)
-        if sleep_time > 0: time.sleep(sleep_time)
-            
-    def register(self, *tasks):
-        for task in tasks: self._pygics_sched_reg.put(task)
+    def do(self):
+        fetches = []
         
-    def unregister(self, task):
-        sw = self._pygics_thread.sw
-        if sw: self.stop()
-        if task in self._pygics_sched_q: self._pygics_sched_q.remove(task)
-        if sw: self.start()
-    
+        def fetch(__method__, *argv, **kargs):
+            try: return __method__(*argv, **kargs)
+            except Exception as e:
+                if self.debug: print('[Error]Burst:%s' % str(e))
+            return None
+        
+        for i in range(0, self.length):
+            fetches.append(gevent.spawn(fetch, self.methods[i], *self.args[i], **self.kargs[i]))
+        try: return [r.value for r in gevent.joinall(fetches)]
+        except Exception as e:
+            if self.debug: print('[Error]Burst:%s' % str(e))
+            raise Exception('[Error]Burst:%s' % str(e))
