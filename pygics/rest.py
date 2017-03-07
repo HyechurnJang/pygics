@@ -54,8 +54,8 @@ class RestAPI:
     # Background Worker
     class RefreshWork(Task):
         
-        def __init__(self, rest_api, refresh):
-            Task.__init__(self, refresh, refresh)
+        def __init__(self, rest_api, refresh_sec):
+            Task.__init__(self, refresh_sec, refresh_sec)
             self.rest_api = rest_api
         
         def run(self):
@@ -70,7 +70,7 @@ class RestAPI:
                  conns=DEFAULT_CONN_SIZE,
                  conn_max=DEFAULT_CONN_MAX,
                  retry=DEFAULT_CONN_RETRY,
-                 refresh=REFRESH_OFF,
+                 refresh_sec=REFRESH_OFF,
                  debug=False):
         
         self.ip = ip
@@ -80,7 +80,7 @@ class RestAPI:
         self.conns = conns
         self.conn_max = conn_max
         self.retry = retry
-        self.refresh = refresh
+        self.refresh_sec = self.refresh_sec
         self.debug = debug
         
         self.url = proto + ip
@@ -102,8 +102,8 @@ class RestAPI:
         try: self.token = self.__login__(self.session)
         except Exception as e: raise RestAPI.ExceptSession(self, e)
         
-        if refresh != RestAPI.REFRESH_OFF:
-            self._restapi_refresh_work = RestAPI.RefreshWork(self, refresh)
+        if refresh_sec != RestAPI.REFRESH_OFF:
+            self._restapi_refresh_work = RestAPI.RefreshWork(self, refresh_sec)
             self._restapi_refresh_work.start()
     
     def __init_session__(self):
