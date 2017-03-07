@@ -13,5 +13,13 @@ setup(
     description='Python Gevent Interface for Coresponding Service',
     long_description=read('README'),
     packages=['pygics'],
-    install_requires=['gevent', 'requests']
+    install_requires=['gevent', 'requests'],
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'License :: OSI Approved :: Apache Software License',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+    ],
 )
