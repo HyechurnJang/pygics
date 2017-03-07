@@ -80,7 +80,7 @@ class RestAPI:
         self.conns = conns
         self.conn_max = conn_max
         self.retry = retry
-        self.refresh_sec = self.refresh_sec
+        self.refresh_sec = refresh_sec
         self.debug = debug
         
         self.url = proto + ip
