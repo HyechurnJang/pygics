@@ -1,10 +1,10 @@
 #pygics
 
-**PY**thon **G**event **I**nterface for **C**o-responding **S**ervice
+**PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.1.4
+version : 0.1.5
 
-last change : change RestAPI.refresh attribute to RestAPI.refresh_sec
+last change : Burst Return Mechanism
 
 ## Install
 

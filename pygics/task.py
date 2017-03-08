@@ -95,17 +95,16 @@ class Burst:
         return self.register(method, *argv, **kargs)
     
     def do(self):
+        ret = [None for i in range(0, self.length)]
         fetches = []
         
-        def fetch(__method__, *argv, **kargs):
-            try: return __method__(*argv, **kargs)
+        def fetch(__method__, __ret__, __index__, *argv, **kargs):
+            try: __ret__[__index__] = __method__(*argv, **kargs)
             except Exception as e:
                 if self.debug: print('[Error]Burst:%s' % str(e))
-            return None
         
         for i in range(0, self.length):
-            fetches.append(gevent.spawn(fetch, self.methods[i], *self.args[i], **self.kargs[i]))
-        try: return [r.value for r in gevent.joinall(fetches)]
-        except Exception as e:
-            if self.debug: print('[Error]Burst:%s' % str(e))
-            raise Exception('[Error]Burst:%s' % str(e))
+            fetches.append(gevent.spawn(fetch, self.methods[i], ret, i, *self.args[i], **self.kargs[i]))
+        
+        gevent.joinall(fetches)
+        return ret
