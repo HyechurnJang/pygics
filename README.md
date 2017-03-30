@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.1.5
+version : 0.1.6
 
-last change : Burst Return Mechanism
+last change : simple rest server interface
 
 ## Install
 
