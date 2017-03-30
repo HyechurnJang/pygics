@@ -1,3 +1,4 @@
 
 from .task import Time, Queue, Lock, Task, Burst
-from .rest import RestAPI
+from .session import RestAPI
+from .service import server, service

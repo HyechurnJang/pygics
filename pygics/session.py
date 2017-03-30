@@ -136,7 +136,7 @@ class RestAPI:
             except RestAPI.ExceptMessage as e: raise e
             except: self.refresh()
         
-        if self.debug: print('%s:%d:%s\n%s' % (mtype, resp.status_code, url, resp.text))
+        if self.debug: print('%s:%d:%s\n%s\n%s\n%s' % (mtype, resp.status_code, req_url, context, data, resp.text))
         return resp
     
     # User Interface
