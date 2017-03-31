@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.1.6
+version : 0.2.0
 
-last change : simple rest server interface
+last change : 0.2.0 stable release
 
 ## Install
 
@@ -16,3 +16,7 @@ last change : simple rest server interface
 **From PIP**
 
 	$ pip install pygics
+
+## Example
+
+Look samples in sample directory

@@ -1,3 +1,16 @@
 pygics
 
 Python Gevent Interface for Corresponding Service
+
+1. Install
+
+	1.1 From GIT
+		$ python setup.py build
+		$ python setup.py install
+
+	1.2 From PIP
+		$ pip install pygics
+
+2. Example
+
+	Look samples in sample directory
