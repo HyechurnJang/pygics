@@ -39,10 +39,9 @@ class Request:
         if self.method in ['POST', 'PUT']:
             raw_data = req['wsgi.input'].read()
             if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE']
-            else: content_type = 'application/json'
-            print content_type
-            if content_type == 'application/json': self.data = json.loads(raw_data)
-            elif content_type == 'text/plain': self.data = raw_data
+            else: content_type = 'application/json; charset=UTF-8'
+            if 'application/json' in content_type: self.data = json.loads(raw_data)
+            elif 'text/plain' in content_type: self.data = raw_data
             else: raise Request.UnsupportContentType()
         else: self.data = {}
         rns = filter(None, self.path.split('/'))
@@ -64,16 +63,13 @@ def __pygics_wsgi_application__(req, res):
     try: req = Request(req)
     except Request.NotFound as e:
         res('404 Not Found', [('Content-Type', 'application/json')])
-        print(str(e))
         return json.dumps({'error' : str(e)})
     except Exception as e:
         res('400 Bad Request', [('Content-Type', 'application/json')])
-        print(str(e))
         return json.dumps({'error' : str(e)})
     try: return req.api(req, res)
     except Exception as e:
         res('500 Internal Server Error', [('Content-Type', 'application/json')])
-        print(str(e))
         return json.dumps({'error' : str(e)})
 
 def __delete_module__(mod_name):
@@ -115,7 +111,6 @@ def service(method, url):
                 return json.dumps({'error' : 'parameter mismatched'})
             except Exception as e:
                 res('500 Internal Server Error', [('Content-Type', 'application/json')])
-                print(str(e))
                 return json.dumps({'error' : str(e)})
             res('200 OK', [('Content-Type', 'application/json')])
             return json.dumps({'result' : ret})
