@@ -60,18 +60,19 @@ class Request:
         return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kwargs, self.data)
 
 def __pygics_wsgi_application__(req, res):
-    try:
-        req = Request(req)
-        print str(req)
+    try: req = Request(req)
     except Request.NotFound as e:
         res('404 Not Found', [('Content-Type', 'application/json')])
+        print(str(e))
         return json.dumps({'error' : str(e)})
     except Exception as e:
         res('400 Bad Request', [('Content-Type', 'application/json')])
+        print(str(e))
         return json.dumps({'error' : str(e)})
     try: return req.api(req, res)
     except Exception as e:
         res('500 Internal Server Error', [('Content-Type', 'application/json')])
+        print(str(e))
         return json.dumps({'error' : str(e)})
 
 def __delete_module__(mod_name):
@@ -113,6 +114,7 @@ def service(method, url):
                 return json.dumps({'error' : 'parameter mismatched'})
             except Exception as e:
                 res('500 Internal Server Error', [('Content-Type', 'application/json')])
+                print(str(e))
                 return json.dumps({'error' : str(e)})
             res('200 OK', [('Content-Type', 'application/json')])
             return json.dumps({'result' : ret})
