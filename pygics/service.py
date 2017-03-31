@@ -40,6 +40,7 @@ class Request:
             raw_data = req['wsgi.input'].read()
             if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE']
             else: content_type = 'application/json'
+            print content_type
             if content_type == 'application/json': self.data = json.loads(raw_data)
             elif content_type == 'text/plain': self.data = raw_data
             else: raise Request.UnsupportContentType()
