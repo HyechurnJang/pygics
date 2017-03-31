@@ -60,7 +60,9 @@ class Request:
         return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kwargs, self.data)
 
 def __pygics_wsgi_application__(req, res):
-    try: req = Request(req)
+    try:
+        req = Request(req)
+        print str(req)
     except Request.NotFound as e:
         res('404 Not Found', [('Content-Type', 'application/json')])
         return json.dumps({'error' : str(e)})
