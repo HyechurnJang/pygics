@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.2.1
+version : 0.3.0
 
-last change : content type bug fix
+last change : calling "service" to separated to "api" and "model"
 
 ## Install
 
