@@ -33,6 +33,9 @@ class Lock(gevent.lock.Semaphore):
 
 class Task:
     
+    @classmethod
+    def yielding(cls): gevent.sleep(0)
+    
     def __init__(self, tick=0, delay=0, debug=False):
         self._pygics_thread = None
         self._pygics_thread_sw = False
@@ -53,10 +56,12 @@ class Task:
                 if sleep_time > 0: Time.sleep(sleep_time)
                 else:
                     if self._pygics_thread_debug: print('[Warning]Task:Processing Time Over Tick')
+                    Task.yielding()
             else:
                 try: self.run()
                 except Exception as e:
                     if self._pygics_thread_debug: print('[Error]Task:%s' % str(e))
+                Task.yielding()
     
     def start(self):
         if self._pygics_thread == None:

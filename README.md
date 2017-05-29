@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.3.0
+version : 0.3.1
 
-last change : calling "service" to separated to "api" and "model"
+last change : add task yielding & module loading apis
 
 ## Install
 
