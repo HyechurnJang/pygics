@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.3.5
+version : 0.3.6
 
-last change : re-code install & uninstall module
+last change : few bug fix
 
 ## Install
 
