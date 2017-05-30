@@ -416,7 +416,7 @@ def server(ip,
     #===========================================================================
     # Load Modules
     #===========================================================================
-    for module in libraries: __load_module__(module, static=True)
+    for module in modules: __load_module__(module, static=True)
     try:
         with open(PYGICS.DIR.SVC + '/modules.prio', 'r') as fd: upload_modules = json.loads(fd.read())
     except Exception as e:

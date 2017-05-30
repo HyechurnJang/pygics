@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.3.3
+version : 0.3.4
 
-last change : add importing requirements
+last change : modules bug fix
 
 ## Install
 
