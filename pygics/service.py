@@ -7,6 +7,7 @@ Created on 2017. 3. 29.
 import os
 import re
 import sys
+import pip
 import json
 import uuid
 import shutil
@@ -271,6 +272,7 @@ def server(ip,
             if pac_name in PYGICS.MOD.UPLOAD:
                 try: __delete_module_without_name__(pac_name)
                 except: pass
+            __load_requirements__(path + '/requirements.txt')
             if path not in sys.path: sys.path.insert(0, parents)
             try: __import__(pac_name)
             except Exception as e:
@@ -283,6 +285,48 @@ def server(ip,
                 with open(PYGICS.DIR.SVC + '/modules.prio', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.UPLOAD))
             return 'success'
         raise Exception('non-exist module')
+    
+    def __load_repo__(name, branch='master'):
+        resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
+        if resp.status_code != 200: raise Exception('incorrect repo')
+        pyg_file_path = PYGICS.DIR.MOD + '/' + name + '.pyg'
+        package_path = PYGICS.DIR.MOD + '/' + name
+        package_code_path = PYGICS.DIR.MOD + '/' + name + '/%s-%s' % (name, branch)
+        package_code_move_path = PYGICS.DIR.MOD + '/%s-%s' % (name, branch) 
+        code_path = PYGICS.DIR.MOD + '/' + name + '.py'
+        compile_path = PYGICS.DIR.MOD + '/' + name + '.pyc'
+        if os.path.exists(package_path) and os.path.isdir(package_path): shutil.rmtree(package_path)
+        elif os.path.exists(code_path) and os.path.isfile(code_path):
+            if os.path.exists(compile_path): os.remove(compile_path)
+            os.remove(code_path)
+        with open(pyg_file_path, 'wb') as fd: fd.write(resp.content)
+        with zipfile.ZipFile(pyg_file_path, 'r') as zfd: zfd.extractall(package_path)
+        os.remove(pyg_file_path)
+        shutil.move(package_code_path, PYGICS.DIR.MOD)
+        shutil.rmtree(package_path)
+        os.rename(package_code_move_path, package_path)
+        return __load_module__(package_path)
+    
+    def __load_requirements__(path):
+        if not os.path.exists(path): return False
+        with open(path) as fd: packages = fd.readlines()
+        span = []
+        for p in packages: span.append(re.match('(?P<package>[\w:]+)', p).group('package'))
+        packages = span
+        
+        print path, packages
+        
+        for p in packages:
+            if 'pygics::' in p:
+                rname = p.replace('pygics::', '')
+                if rname in PYGICS.MOD.STATIC: continue
+                if rname in PYGICS.MOD.UPLOAD: continue
+                __load_repo__(rname)
+            else: __load_pip__(p)
+    
+    def __load_pip__(name):
+        if pip.main(['install', '-q', name]) == 0: return True
+        return False
     
     #===========================================================================
     # Management Admin Rest APIs
@@ -337,25 +381,7 @@ def server(ip,
     @api('POST', '/repo')
     def load_repo(req, name, branch='master'):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-        if resp.status_code != 200: raise Exception('incorrect repo')
-        pyg_file_path = PYGICS.DIR.MOD + '/' + name + '.pyg'
-        package_path = PYGICS.DIR.MOD + '/' + name
-        package_code_path = PYGICS.DIR.MOD + '/' + name + '/%s-%s' % (name, branch)
-        package_code_move_path = PYGICS.DIR.MOD + '/%s-%s' % (name, branch) 
-        code_path = PYGICS.DIR.MOD + '/' + name + '.py'
-        compile_path = PYGICS.DIR.MOD + '/' + name + '.pyc'
-        if os.path.exists(package_path) and os.path.isdir(package_path): shutil.rmtree(package_path)
-        elif os.path.exists(code_path) and os.path.isfile(code_path):
-            if os.path.exists(compile_path): os.remove(compile_path)
-            os.remove(code_path)
-        with open(pyg_file_path, 'wb') as fd: fd.write(resp.content)
-        with zipfile.ZipFile(pyg_file_path, 'r') as zfd: zfd.extractall(package_path)
-        os.remove(pyg_file_path)
-        shutil.move(package_code_path, PYGICS.DIR.MOD)
-        shutil.rmtree(package_path)
-        os.rename(package_code_move_path, package_path)
-        return __load_module__(package_path)
+        return __load_repo__(name, branch)
     
     @api('GET', '/resource', content_type='application/octet-stream')
     def download_resource(req, *argv):
