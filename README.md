@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.3.2
+version : 0.3.3
 
-last change : add Task.isRun()
+last change : add importing requirements
 
 ## Install
 

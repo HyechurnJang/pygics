@@ -185,7 +185,7 @@ def api(method, url, content_type='application/json'):
 
 def server(ip,
            port=80,
-           libraries=[],
+           modules=[],
            resource={},
            clean_init=False):
     
@@ -286,7 +286,7 @@ def server(ip,
             return 'success'
         raise Exception('non-exist module')
     
-    def __load_repo__(name, branch='master'):
+    def __load_repo_module__(name, branch='master'):
         resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
         if resp.status_code != 200: raise Exception('incorrect repo')
         pyg_file_path = PYGICS.DIR.MOD + '/' + name + '.pyg'
@@ -307,26 +307,24 @@ def server(ip,
         os.rename(package_code_move_path, package_path)
         return __load_module__(package_path)
     
+    def __load_pip_module__(name):
+        if pip.main(['install', '-q', name]) == 0: return True
+        return False
+    
     def __load_requirements__(path):
         if not os.path.exists(path): return False
         with open(path) as fd: packages = fd.readlines()
         span = []
         for p in packages: span.append(re.match('(?P<package>[\w:]+)', p).group('package'))
         packages = span
-        
-        print path, packages
-        
         for p in packages:
             if 'pygics::' in p:
                 rname = p.replace('pygics::', '')
                 if rname in PYGICS.MOD.STATIC: continue
                 if rname in PYGICS.MOD.UPLOAD: continue
-                __load_repo__(rname)
-            else: __load_pip__(p)
-    
-    def __load_pip__(name):
-        if pip.main(['install', '-q', name]) == 0: return True
-        return False
+                __load_repo_module__(rname)
+            else: __load_pip_module__(p)
+        return True
     
     #===========================================================================
     # Management Admin Rest APIs
@@ -381,7 +379,7 @@ def server(ip,
     @api('POST', '/repo')
     def load_repo(req, name, branch='master'):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        return __load_repo__(name, branch)
+        return __load_repo_module__(name, branch)
     
     @api('GET', '/resource', content_type='application/octet-stream')
     def download_resource(req, *argv):
