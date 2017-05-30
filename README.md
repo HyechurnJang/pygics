@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.3.1
+version : 0.3.2
 
-last change : add task yielding & module loading apis
+last change : add Task.isRun()
 
 ## Install
 
