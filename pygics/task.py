@@ -79,6 +79,9 @@ class Task:
         
     def run(self):
         pass
+    
+    def isRun(self):
+        return self._pygics_thread_sw
 
 class Burst:
     
