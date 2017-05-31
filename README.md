@@ -21,6 +21,8 @@ Now, pygics is used following
  - Concurrency Tasking
  - RestAPI Wrapper
  - Micro Service
+    - Prepared Applications : https://github.com/pygics-app
+    - Experimental Applications : https://github.com/pygics-app-exp
 
 See the document below for more details.
 
