@@ -6,10 +6,9 @@ version : 0.4.0
 
 last change : update readme
 
-<p align="center"><img src="./doc/pygics_logo.png"></p>
-<p align="center" style="color:#0099ff;font-size:40px;"><b>Pygics</b></p>
-
 ## What is Pygics?
+
+<p align="center"><img src="./doc/pygics_logo.png"></p>
 
 Gevent which is event-based processing is good for using CPU performance with efficient.<br/>
 But it have to make code optimization and use specific APIs for your code.<br/>
