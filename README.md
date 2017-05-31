@@ -40,6 +40,8 @@ Pygics Installation is available via PyPI and Git Source.
 
 ## Examples
 
+**you should get sample code in "sample" directory**
+
 ### Tasking
 
 #### Basic Task Example
