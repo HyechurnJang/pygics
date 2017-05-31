@@ -8,15 +8,12 @@ Created on 2017. 3. 3.
 import pygics
 
 def getSum(a, b):
-    for _ in range(0, 4):
-        print a + b
-        pygics.Time.sleep(1)
+    pygics.Time.sleep(4)
     return a + b
 
 def getMul(a, b):
-    for _ in range(0, 2):
-        print a * b
-        pygics.Time.sleep(1)
+    pygics.Time.sleep(2)
     return a * b
 
-print pygics.Burst().register(getSum, 1, 1).register(getMul, 1, 1).do()
+getSum_ret, getMul_ret = pygics.Burst().register(getSum, 1, 1).register(getMul, 1, 1).do()
+print getSum_ret, getMul_ret

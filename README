@@ -2,14 +2,25 @@ pygics
 
 Python Gevent Interface for Corresponding Service
 
+Gevent which is event-based processing is good for using CPU performance with efficient.
+But it have to make code optimization and use specific APIs for your code.
+For solving issue under legacy code, Gevent supply monkey patching however it make to odd penomenons.
+So Pygics is made of wrapping Gevent for unified platform which is used corresponding service.
+
+Now, pygics is used following
+
+ - Concurrency Tasking
+ - RestAPI Wrapper
+ - Micro Service
+
 1. Install
 
-	1.1 From GIT
+	1.1 From PIP
+		$ pip install pygics
+
+	1.2 From GIT
 		$ python setup.py build
 		$ python setup.py install
-
-	1.2 From PIP
-		$ pip install pygics
 
 2. Example
 

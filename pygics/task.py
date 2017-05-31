@@ -10,7 +10,7 @@ import gevent.queue
 import gevent.lock
 
 #===============================================================================
-# Processing Utils
+# Tasking Utils
 #===============================================================================
 class Time:
     
@@ -28,9 +28,8 @@ class Lock(gevent.lock.Semaphore):
         gevent.lock.Semaphore.__init__(self, *argv, **kargs)
 
 #===============================================================================
-# Thread
+# Tasking
 #===============================================================================
-
 class Task:
     
     @classmethod
@@ -83,6 +82,9 @@ class Task:
     def isRun(self):
         return self._pygics_thread_sw
 
+#===============================================================================
+# Concurrent Tasking
+#===============================================================================
 class Burst:
     
     def __init__(self, debug=False):
