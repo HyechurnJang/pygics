@@ -16,7 +16,7 @@ import requests
 import logging
 import logging.handlers
 from gevent.pywsgi import WSGIServer
-from .task import Task
+from .task import Task, Burst
 
 class __PygicsServiceEnvironment__:
     
@@ -250,11 +250,12 @@ def server(ip,
     def __install_module__(path, static=False):
         if 'pip::' in path:
             if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
-        elif 'app::' in path:
+        elif 'app::' in path or 'exp::' in path:
             repo_desc = path.split('::')
+            repo = repo_desc[0]
             name = repo_desc[1]
             branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
-            if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
+            if name in PYGICS.MOD.STATIC: return
             if name in PYGICS.MOD.UPLOAD: return
             mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
             if os.path.exists(mod_path) and os.path.isdir(mod_path):
@@ -263,8 +264,9 @@ def server(ip,
             gzip_path = '%s.zip' % mod_path
             uzip_path = '%s/%s-%s' % (mod_path, name, branch)
             move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
-            resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-            if resp.status_code != 200: raise Exception('could not install %s' % path)
+            if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
+            else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+            if resp.status_code != 200: raise Exception('could not find %s' % path)
             with open(gzip_path, 'wb') as fd: fd.write(resp.content)
             with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
             os.remove(gzip_path)
@@ -355,18 +357,25 @@ def server(ip,
     
     @api('GET', '/repo')
     def get_repo(req):
-        resp = requests.get('https://api.github.com/users/pygics-app/repos')
-        if resp.status_code != 200: raise Exception('could not find repository')
-        repos = resp.json()
-        result = []
-        for repo in repos:
-            result.append({'name' : repo['name'], 'description' : repo['description']})
+        app, exp = Burst().register(
+            requests.get, 'https://api.github.com/users/pygics-app/repos').register(
+            requests.get, 'https://api.github.com/users/pygics-app-exp/repos').do()
+        result = {'app' : [], 'exp' : []}
+        if app.status_code == 200:
+            repos = app.json()
+            for repo in repos:
+                result['app'].append({'name' : repo['name'], 'description' : repo['description']})
+        if exp.status_code == 200:
+            repos = exp.json()
+            for repo in repos:
+                result['exp'].append({'name' : repo['name'], 'description' : repo['description']})
         return result
     
     @api('POST', '/repo')
-    def install_repo(req, name, branch='master'):
+    def install_repo(req, repo, name, branch='master'):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        __install_module__('app::%s::%s' % (name, branch))
+        if repo not in ['app', 'exp']: raise Exception('incorrect repository name')
+        __install_module__('%s::%s::%s' % (repo, name, branch))
         return 'success'
     
     @api('GET', '/resource', content_type='application/octet-stream')
