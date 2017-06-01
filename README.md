@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.0
+version : 0.4.1
 
-last change : update readme
+last change : update pygics.api
 
 ## What is Pygics?
 

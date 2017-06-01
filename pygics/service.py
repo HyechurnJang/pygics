@@ -134,7 +134,7 @@ class Request:
     def __str__(self):
         return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kargs, self.data)
 
-def api(method, url, content_type=ContentType.AppJson):
+def api(method, url, content_type=ContentType.AppJson, url_absolute=False):
     def api_wrapper(func):
         def decofunc(req, res):
             try: ret = func(req, *req.args, **req.kargs)
@@ -154,13 +154,15 @@ def api(method, url, content_type=ContentType.AppJson):
         
         __PygicsServiceEnvironment__.__environment_init__()
         
-        module_name = func.__module__
-        func_name = func.__name__
         if url[0] != '/': furl = '/' + url
         else: furl = url
-        if module_name == '__main__': dn = furl
-        elif module_name == 'pygics.service': dn = '/pygics%s' % furl 
-        else: dn = '/%s%s' % (module_name, furl)
+        if url_absolute: dn = furl
+        else:
+            module_name = func.__module__
+            func_name = func.__name__
+            if module_name == '__main__': dn = furl
+            elif module_name == 'pygics.service': dn = '/pygics%s' % furl 
+            else: dn = '/%s%s' % (module_name, furl)
         rns = filter(None, dn.split('/'))
         ref = PYGICS.API[method.upper()]
         for rn in rns:
@@ -168,7 +170,8 @@ def api(method, url, content_type=ContentType.AppJson):
             ref = ref[rn]
         ref['__api_url__'] = dn
         ref['__api_ref__'] = decofunc
-        print('register api <%s:%s> link to <%s.%s>' % (method.upper(), dn, module_name, func_name))
+        if url_absolute: print('register api <%s:%s> by absolute path, result-type=%s' % (method.upper(), dn, content_type))
+        else: print('register api <%s:%s> link to <%s.%s>, result-type=%s' % (method.upper(), dn, module_name, func_name, content_type))
         
         return decofunc
     return api_wrapper
