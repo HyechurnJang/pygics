@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.1
+version : 0.4.2
 
-last change : update pygics.api
+last change : add Loadable object & api install_module/uninstall_module
 
 ## What is Pygics?
 

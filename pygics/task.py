@@ -42,6 +42,9 @@ class Task:
         self._pygics_thread_delay = delay
         self._pygics_thread_debug = debug
     
+    def __del__(self):
+        self.stop()
+    
     def __thread_wrapper__(self):
         if self._pygics_thread_delay > 0: Time.sleep(self._pygics_thread_delay)
         while self._pygics_thread_sw:

@@ -85,6 +85,8 @@ class __PygicsServiceEnvironment__:
                 else: self.logger.info(msg)
         
         sys.stdout = __PygicsServiceModuleLogRedirect__(cls.MNG.MLOG)
+
+class Loadable: pass
         
 class ContentType:
     
@@ -176,6 +178,138 @@ def api(method, url, content_type=ContentType.AppJson, url_absolute=False):
         return decofunc
     return api_wrapper
 
+
+def __save_module_dep__():
+    with open(PYGICS.DIR.SVC + '/modules.dep', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.UPLOAD))
+
+def __remove_module_file__(name):
+    py_path = '%s/%s.py' % (PYGICS.DIR.MOD, name)
+    pyc_path = '%s/%s.pyc' % (PYGICS.DIR.MOD, name)
+    pack_path = '%s/%s' % (PYGICS.DIR.MOD, name)
+    if os.path.exists(pack_path) and os.path.isdir(pack_path): shutil.rmtree(pack_path)
+    elif os.path.exists(py_path) and os.path.isfile(py_path):
+        os.remove(py_path)
+        if os.path.exists(pyc_path) and os.path.isfile(pyc_path):
+            os.remove(pyc_path)
+
+def __unlink_module__(name):
+    if name in PYGICS.API['GET']:
+        PYGICS.API['GET'].pop(name)
+        PYGICS.MNG.MLOG.info('delete api <GET:/%s/*>' % name)
+    if name in PYGICS.API['POST']:
+        PYGICS.API['POST'].pop(name)
+        PYGICS.MNG.MLOG.info('delete api <POST:/%s/*>' % name)
+    if name in PYGICS.API['PUT']:
+        PYGICS.API['PUT'].pop(name)
+        PYGICS.MNG.MLOG.info('delete api <PUT:/%s/*>' % name)
+    if name in PYGICS.API['DELETE']:
+        PYGICS.API['DELETE'].pop(name)
+        PYGICS.MNG.MLOG.info('delete api <DELETE:/%s/*>' % name)
+    if name in sys.modules:
+        mod = sys.modules.pop(name)
+        for _, val in mod.__dict__.items():
+            if isinstance(val, Task) or isinstance(val, Loadable): del val
+        del mod
+
+def __link_module__(path, name):
+    if path != '' and path not in sys.path: sys.path.insert(0, path)
+    __import__(name)
+
+def __install_requirements__(path, static=False):
+    if os.path.exists(path):
+        with open(path) as fd: packages = fd.readlines()
+        span = []
+        for path in packages: span.append(re.match('\s*(?P<package>[\w\.\-\:]+)', path).group('package'))
+        packages = span
+        for path in packages: install_module(path, static)
+    
+def uninstall_module(name):
+    if name in PYGICS.MOD.STATIC: raise Exception('could not uninstall static module %s' % name)
+    if name not in PYGICS.MOD.UPLOAD: raise Exception('could not find module %s' % name)
+    __unlink_module__(name)
+    PYGICS.MOD.UPLOAD.remove(name)
+    __save_module_dep__()
+    __remove_module_file__(name)
+
+def install_module(path, static=False):
+    if 'pip::' in path:
+        if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
+    elif 'app::' in path or 'exp::' in path:
+        repo_desc = path.split('::')
+        repo = repo_desc[0]
+        name = repo_desc[1]
+        branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
+        if name in PYGICS.MOD.STATIC: return
+        if name in PYGICS.MOD.UPLOAD: return
+        mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
+        if os.path.exists(mod_path) and os.path.isdir(mod_path):
+            install_module(mod_path, static)
+            return
+        gzip_path = '%s.zip' % mod_path
+        uzip_path = '%s/%s-%s' % (mod_path, name, branch)
+        move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
+        if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
+        else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+        if resp.status_code != 200: raise Exception('could not find %s' % path)
+        with open(gzip_path, 'wb') as fd: fd.write(resp.content)
+        with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
+        os.remove(gzip_path)
+        shutil.move(uzip_path, PYGICS.DIR.MOD)
+        shutil.rmtree(mod_path)
+        os.rename(move_path, mod_path)
+        __install_requirements__(mod_path + '/requirements.txt', static)
+        __link_module__(PYGICS.DIR.MOD, name)
+        if static: PYGICS.MOD.STATIC.append(name)
+        elif name not in PYGICS.MOD.UPLOAD:
+            PYGICS.MOD.UPLOAD.append(name)
+            __save_module_dep__()
+    else:
+        parent, name = os.path.split(path)
+        name, ext = os.path.splitext(name)
+        if ext == '.raw':
+            if zipfile.is_zipfile(path):
+                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
+                mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
+                if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
+                __remove_module_file__(name)
+                with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
+                os.remove(path)
+                __install_requirements__(mod_path + '/requirements.txt', static)
+                __link_module__(PYGICS.DIR.MOD, name)
+                if static: PYGICS.MOD.STATIC.append(name)
+                elif name not in PYGICS.MOD.UPLOAD:
+                    PYGICS.MOD.UPLOAD.append(name)
+                    __save_module_dep__()
+            else:
+                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
+                if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
+                __remove_module_file__(name)
+                os.rename(path, '%s/%s.py' % (parent, name))
+                __link_module__(PYGICS.DIR.MOD, name)
+                if static: PYGICS.MOD.STATIC.append(name)
+                elif name not in PYGICS.MOD.UPLOAD:
+                    PYGICS.MOD.UPLOAD.append(name)
+                    __save_module_dep__()
+        elif ext == '':
+            if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
+            elif name in PYGICS.MOD.UPLOAD: return
+            __install_requirements__(path + '/requirements.txt', static)
+            __link_module__(parent, name)
+            if static: PYGICS.MOD.STATIC.append(name)
+            elif name not in PYGICS.MOD.UPLOAD:
+                PYGICS.MOD.UPLOAD.append(name)
+                __save_module_dep__()
+        elif ext == '.py':
+            if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
+            elif name in PYGICS.MOD.UPLOAD: return
+            __link_module__(parent, name)
+            if static: PYGICS.MOD.STATIC.append(name)
+            elif name not in PYGICS.MOD.UPLOAD:
+                PYGICS.MOD.UPLOAD.append(name)
+                __save_module_dep__()
+        else: raise Exception('could not install %s' % path)
+    print('module %s is installed' % path)
+
 def server(ip,
            port=80,
            modules=[],
@@ -205,137 +339,6 @@ def server(ip,
             res('400 Bad Request', [('Content-Type', 'application/json')])
             return [json.dumps({'error' : str(e)})]
         return [req.api(req, res)]
-    
-    def __save_module_dep__():
-        with open(PYGICS.DIR.SVC + '/modules.dep', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.UPLOAD))
-    
-    def __remove_module_file__(name):
-        py_path = '%s/%s.py' % (PYGICS.DIR.MOD, name)
-        pyc_path = '%s/%s.pyc' % (PYGICS.DIR.MOD, name)
-        pack_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-        if os.path.exists(pack_path) and os.path.isdir(pack_path): shutil.rmtree(pack_path)
-        elif os.path.exists(py_path) and os.path.isfile(py_path):
-            os.remove(py_path)
-            if os.path.exists(pyc_path) and os.path.isfile(pyc_path):
-                os.remove(pyc_path)
-    
-    def __unlink_module__(name):
-        if name in PYGICS.API['GET']:
-            PYGICS.API['GET'].pop(name)
-            PYGICS.MNG.MLOG.info('delete api <GET:/%s/*>' % name)
-        if name in PYGICS.API['POST']:
-            PYGICS.API['POST'].pop(name)
-            PYGICS.MNG.MLOG.info('delete api <POST:/%s/*>' % name)
-        if name in PYGICS.API['PUT']:
-            PYGICS.API['PUT'].pop(name)
-            PYGICS.MNG.MLOG.info('delete api <PUT:/%s/*>' % name)
-        if name in PYGICS.API['DELETE']:
-            PYGICS.API['DELETE'].pop(name)
-            PYGICS.MNG.MLOG.info('delete api <DELETE:/%s/*>' % name)
-        if name in sys.modules:
-            mod = sys.modules.pop(name)
-            for _, val in mod.__dict__.items():
-                if isinstance(val, Task): val.stop()
-            del mod
-    
-    def __link_module__(path, name):
-        if path != '' and path not in sys.path: sys.path.insert(0, path)
-        __import__(name)
-        
-    def __uninstall_module__(name):
-        if name in PYGICS.MOD.STATIC: raise Exception('could not uninstall static module %s' % name)
-        if name not in PYGICS.MOD.UPLOAD: raise Exception('could not find module %s' % name)
-        __unlink_module__(name)
-        PYGICS.MOD.UPLOAD.remove(name)
-        __save_module_dep__()
-        __remove_module_file__(name)
-    
-    def __install_module__(path, static=False):
-        if 'pip::' in path:
-            if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
-        elif 'app::' in path or 'exp::' in path:
-            repo_desc = path.split('::')
-            repo = repo_desc[0]
-            name = repo_desc[1]
-            branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
-            if name in PYGICS.MOD.STATIC: return
-            if name in PYGICS.MOD.UPLOAD: return
-            mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-            if os.path.exists(mod_path) and os.path.isdir(mod_path):
-                __install_module__(mod_path, static)
-                return
-            gzip_path = '%s.zip' % mod_path
-            uzip_path = '%s/%s-%s' % (mod_path, name, branch)
-            move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
-            if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-            else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
-            if resp.status_code != 200: raise Exception('could not find %s' % path)
-            with open(gzip_path, 'wb') as fd: fd.write(resp.content)
-            with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
-            os.remove(gzip_path)
-            shutil.move(uzip_path, PYGICS.DIR.MOD)
-            shutil.rmtree(mod_path)
-            os.rename(move_path, mod_path)
-            __install_requirements__(mod_path + '/requirements.txt', static)
-            __link_module__(PYGICS.DIR.MOD, name)
-            if static: PYGICS.MOD.STATIC.append(name)
-            elif name not in PYGICS.MOD.UPLOAD:
-                PYGICS.MOD.UPLOAD.append(name)
-                __save_module_dep__()
-        else:
-            parent, name = os.path.split(path)
-            name, ext = os.path.splitext(name)
-            if ext == '.raw':
-                if zipfile.is_zipfile(path):
-                    if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                    mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-                    if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
-                    __remove_module_file__(name)
-                    with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
-                    os.remove(path)
-                    __install_requirements__(mod_path + '/requirements.txt', static)
-                    __link_module__(PYGICS.DIR.MOD, name)
-                    if static: PYGICS.MOD.STATIC.append(name)
-                    elif name not in PYGICS.MOD.UPLOAD:
-                        PYGICS.MOD.UPLOAD.append(name)
-                        __save_module_dep__()
-                else:
-                    if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                    if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
-                    __remove_module_file__(name)
-                    os.rename(path, '%s/%s.py' % (parent, name))
-                    __link_module__(PYGICS.DIR.MOD, name)
-                    if static: PYGICS.MOD.STATIC.append(name)
-                    elif name not in PYGICS.MOD.UPLOAD:
-                        PYGICS.MOD.UPLOAD.append(name)
-                        __save_module_dep__()
-            elif ext == '':
-                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                elif name in PYGICS.MOD.UPLOAD: return
-                __install_requirements__(path + '/requirements.txt', static)
-                __link_module__(parent, name)
-                if static: PYGICS.MOD.STATIC.append(name)
-                elif name not in PYGICS.MOD.UPLOAD:
-                    PYGICS.MOD.UPLOAD.append(name)
-                    __save_module_dep__()
-            elif ext == '.py':
-                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                elif name in PYGICS.MOD.UPLOAD: return
-                __link_module__(parent, name)
-                if static: PYGICS.MOD.STATIC.append(name)
-                elif name not in PYGICS.MOD.UPLOAD:
-                    PYGICS.MOD.UPLOAD.append(name)
-                    __save_module_dep__()
-            else: raise Exception('could not install %s' % path)
-        print('module %s is installed' % path)
-            
-    def __install_requirements__(path, static=False):
-        if os.path.exists(path):
-            with open(path) as fd: packages = fd.readlines()
-            span = []
-            for path in packages: span.append(re.match('\s*(?P<package>[\w\.\-\:]+)', path).group('package'))
-            packages = span
-            for path in packages: __install_module__(path, static)
 
     #===========================================================================
     # Management Admin Rest APIs
@@ -345,17 +348,17 @@ def server(ip,
         return {'static' : PYGICS.MOD.STATIC, 'upload' : PYGICS.MOD.UPLOAD}
     
     @api('POST', '/module')
-    def install_module(req, name):
+    def upload_module(req, name):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
         raw_file = '%s/%s.raw' % (PYGICS.DIR.MOD, name)
         with open(raw_file, 'wb') as fd: fd.write(req.data)
-        __install_module__(raw_file)
+        install_module(raw_file)
         return 'success'
             
     @api('DELETE', '/module')
-    def uninstall_module(req, name):
+    def delete_module(req, name):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        __uninstall_module__(name)
+        uninstall_module(name)
         return 'success'
     
     @api('GET', '/repo')
@@ -378,7 +381,7 @@ def server(ip,
     def install_repo(req, repo, name, branch='master'):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
         if repo not in ['app', 'exp']: raise Exception('incorrect repository name')
-        __install_module__('%s::%s::%s' % (repo, name, branch))
+        install_module('%s::%s::%s' % (repo, name, branch))
         return 'success'
     
     @api('GET', '/resource', content_type='application/octet-stream')
@@ -418,7 +421,7 @@ def server(ip,
     #===========================================================================
     # Load Modules
     #===========================================================================
-    for module in modules: __install_module__(module, static=True)
+    for module in modules: install_module(module, static=True)
     try:
         with open(PYGICS.DIR.SVC + '/modules.dep', 'r') as fd: upload_modules = json.loads(fd.read())
     except Exception as e:
@@ -427,8 +430,8 @@ def server(ip,
         for module in upload_modules:
             file_path = '%s/%s.py' % (PYGICS.DIR.MOD, module)
             pack_path = '%s/%s' % (PYGICS.DIR.MOD, module)
-            if os.path.isfile(file_path): __install_module__(file_path)
-            elif os.path.isdir(pack_path): __install_module__(pack_path)
+            if os.path.isfile(file_path): install_module(file_path)
+            elif os.path.isdir(pack_path): install_module(pack_path)
     
     #===========================================================================
     # Run Server
