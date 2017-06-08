@@ -12,6 +12,7 @@ import json
 import uuid
 import shutil
 import zipfile
+import inspect
 import requests
 import logging
 import logging.handlers
@@ -49,6 +50,14 @@ class __PygicsServiceEnvironment__:
     def __environment_init__(cls):
         if 'PYGICS' not in __builtins__:
             __builtins__['PYGICS'] = __PygicsServiceEnvironment__
+        if 'PWD' not in __builtins__:
+            __builtins__['PWD'] = __PygicsServiceEnvironment__.__module_pwd__
+    
+    @classmethod
+    def __module_pwd__(cls):
+        mod = inspect.getmodule(inspect.stack()[1][0])
+        mod_path, _ = os.path.split(mod.__file__)
+        return mod_path
             
     @classmethod    
     def __service_init__(cls, ip, port, clean_init):

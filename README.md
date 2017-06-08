@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.2
+version : 0.4.3
 
-last change : add Loadable object & api install_module/uninstall_module
+last change : add global function PWD()
 
 ## What is Pygics?
 
