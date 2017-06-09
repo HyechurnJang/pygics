@@ -14,6 +14,7 @@ import shutil
 import zipfile
 import inspect
 import requests
+import platform
 import logging
 import logging.handlers
 from gevent.pywsgi import WSGIServer
@@ -37,6 +38,11 @@ class __PygicsServiceEnvironment__:
         PLOG = None
         MLOG = None
     
+    class __PygicsServiceSystem__:
+        OS = None
+        DIST = None
+        VER = None
+    
     class __PygicsServiceModule__:
         STATIC = []
         UPLOAD = []
@@ -44,6 +50,7 @@ class __PygicsServiceEnvironment__:
     DIR = __PygicsServiceDirectory__
     NET = __PygicsServiceNetwork__
     MNG = __PygicsServiceManagement__
+    SYS = __PygicsServiceSystem__
     MOD = __PygicsServiceModule__
     API = {'GET' : {}, 'POST' : {}, 'PUT' : {}, 'DELETE' : {}}
     
@@ -70,6 +77,19 @@ class __PygicsServiceEnvironment__:
         if clean_init: shutil.rmtree(cls.DIR.SVC)
         if not os.path.exists(cls.DIR.SVC): os.mkdir(cls.DIR.SVC)
         if not os.path.exists(cls.DIR.MOD): os.mkdir(cls.DIR.MOD)
+        l_os, l_ver, _ = platform.dist()
+        w_os, w_ver, _, _ = platform.win32_ver()
+        if l_os != '':
+            cls.SYS.OS = 'linux'
+            cls.SYS.DIST = l_os.lower()
+            cls.SYS.VER = l_ver
+        elif w_os != '':
+            cls.SYS.OS = 'windows'
+            cls.SYS.DIST = w_os.lower()
+            cls.SYS.VER = w_ver
+        else:
+            cls.SYS.OS = 'unknown'
+            cls.SYS.VER = 'unknown'
         if os.path.exists(cls.DIR.SVC + '/service.uuid'):
             with open(cls.DIR.SVC + '/service.uuid') as fd: cls.MNG.UUID = fd.read()
         else:
@@ -227,7 +247,9 @@ def __install_requirements__(path, static=False):
     if os.path.exists(path):
         with open(path) as fd: packages = fd.readlines()
         span = []
-        for path in packages: span.append(re.match('\s*(?P<package>[\w\.\-\:]+)', path).group('package'))
+        for path in packages:
+            rq = re.match('\s*(?P<package>[\w\.\-\:]+)', path)
+            if rq != None: span.append(rq.group('package'))
         packages = span
         for path in packages: install_module(path, static)
     
@@ -240,37 +262,61 @@ def uninstall_module(name):
     __remove_module_file__(name)
 
 def install_module(path, static=False):
-    if 'pip::' in path:
-        if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
-    elif 'app::' in path or 'exp::' in path:
-        repo_desc = path.split('::')
-        repo = repo_desc[0]
-        name = repo_desc[1]
-        branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
-        if name in PYGICS.MOD.STATIC: return
-        if name in PYGICS.MOD.UPLOAD: return
-        mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-        if os.path.exists(mod_path) and os.path.isdir(mod_path):
-            install_module(mod_path, static)
+    if '::' in path:
+        cmd = path[:5]
+        if 'sys::' == cmd:
+            os_desc = path.split('::')
+            os_type = os_desc[1].lower()
+            os_dist = os_desc[2] if len(os_desc) > 2 else None
+            os_ver = os_desc[3] if len(os_desc) > 3 else None
+            if os_type != PYGICS.SYS.OS: raise Exception('could not support operation system')
+            elif os_dist != None and os_dist != PYGICS.SYS.DIST: raise Exception('could not support operation system')
+            elif os_ver != None and os_ver != PYGICS.SYS.VER: raise Exception('could not support operation system')
+            print('system %s is matched' % path)
             return
-        gzip_path = '%s.zip' % mod_path
-        uzip_path = '%s/%s-%s' % (mod_path, name, branch)
-        move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
-        if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-        else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
-        if resp.status_code != 200: raise Exception('could not find %s' % path)
-        with open(gzip_path, 'wb') as fd: fd.write(resp.content)
-        with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
-        os.remove(gzip_path)
-        shutil.move(uzip_path, PYGICS.DIR.MOD)
-        shutil.rmtree(mod_path)
-        os.rename(move_path, mod_path)
-        __install_requirements__(mod_path + '/requirements.txt', static)
-        __link_module__(PYGICS.DIR.MOD, name)
-        if static: PYGICS.MOD.STATIC.append(name)
-        elif name not in PYGICS.MOD.UPLOAD:
-            PYGICS.MOD.UPLOAD.append(name)
-            __save_module_dep__()
+        elif 'pkg::' == cmd:
+            package = path.replace('pkg::', '')
+            if PYGICS.SYS.DIST in ['centos', 'redhat', 'fedora']: syscmd = 'yum install -q -y %s'
+            elif PYGICS.SYS.DIST in ['ubuntu', 'debian']: syscmd = 'apt-get install -q -y %s'
+            else: raise Exception('could not support installing system package')
+            if os.system(syscmd % package) != 0: raise Exception('could not install system package %s' % path)
+            print('system package %s is installed' % path)
+            return
+        elif 'pip::' == cmd:
+            if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
+            print('package %s is installed' % path)
+            return
+        elif 'app::' == cmd or 'exp::' == cmd:
+            repo_desc = path.split('::')
+            repo = repo_desc[0]
+            name = repo_desc[1]
+            branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
+            if name in PYGICS.MOD.STATIC: return
+            if name in PYGICS.MOD.UPLOAD: return
+            mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
+            if os.path.exists(mod_path) and os.path.isdir(mod_path):
+                install_module(mod_path, static)
+                return
+            gzip_path = '%s.zip' % mod_path
+            uzip_path = '%s/%s-%s' % (mod_path, name, branch)
+            move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
+            if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
+            else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+            if resp.status_code != 200: raise Exception('could not find %s' % path)
+            with open(gzip_path, 'wb') as fd: fd.write(resp.content)
+            with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
+            os.remove(gzip_path)
+            shutil.move(uzip_path, PYGICS.DIR.MOD)
+            shutil.rmtree(mod_path)
+            os.rename(move_path, mod_path)
+            __install_requirements__(mod_path + '/requirements.txt', static)
+            __link_module__(PYGICS.DIR.MOD, name)
+            if static: PYGICS.MOD.STATIC.append(name)
+            elif name not in PYGICS.MOD.UPLOAD:
+                PYGICS.MOD.UPLOAD.append(name)
+                __save_module_dep__()
+            print('module %s is installed' % path)
+            return
     else:
         parent, name = os.path.split(path)
         name, ext = os.path.splitext(name)
@@ -316,7 +362,9 @@ def install_module(path, static=False):
                 PYGICS.MOD.UPLOAD.append(name)
                 __save_module_dep__()
         else: raise Exception('could not install %s' % path)
-    print('module %s is installed' % path)
+        print('module %s is installed' % path)
+        return
+    raise Exception('%s is incorrect requirement' % path)
 
 def server(ip,
            port=80,

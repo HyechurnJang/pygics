@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.4
+version : 0.4.5
 
-last change : add __PYGICS__ object abstraction at core
+last change : add requirements methods
 
 ## What is Pygics?
 
