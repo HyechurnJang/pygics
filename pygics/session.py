@@ -10,9 +10,10 @@ import gevent.monkey
 gevent.monkey.patch_socket()
 gevent.monkey.patch_ssl()
 
+from .core import __PYGICS__
 from .task import Lock, Task
 
-class RestAPI:
+class RestAPI(__PYGICS__):
     
     DEFAULT_CONN_SIZE = requests.adapters.DEFAULT_POOLSIZE
     DEFAULT_CONN_MAX = requests.adapters.DEFAULT_POOLSIZE
@@ -105,6 +106,9 @@ class RestAPI:
         if refresh_sec != RestAPI.REFRESH_OFF:
             self._restapi_refresh_work = RestAPI.RefreshWork(self, refresh_sec)
             self._restapi_refresh_work.start()
+    
+    def __release__(self):
+        self.close()
     
     def __init_session__(self):
         if self.session != None: self.session.close()

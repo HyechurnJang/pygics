@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.3
+version : 0.4.4
 
-last change : add global function PWD()
+last change : add __PYGICS__ object abstraction at core
 
 ## What is Pygics?
 

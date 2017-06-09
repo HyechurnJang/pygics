@@ -17,6 +17,7 @@ import requests
 import logging
 import logging.handlers
 from gevent.pywsgi import WSGIServer
+from .core import __PYGICS__
 from .task import Task, Burst
 
 class __PygicsServiceEnvironment__:
@@ -95,8 +96,6 @@ class __PygicsServiceEnvironment__:
         
         sys.stdout = __PygicsServiceModuleLogRedirect__(cls.MNG.MLOG)
 
-class Loadable: pass
-        
 class ContentType:
     
     AppJson = 'application/json'
@@ -217,7 +216,7 @@ def __unlink_module__(name):
     if name in sys.modules:
         mod = sys.modules.pop(name)
         for _, val in mod.__dict__.items():
-            if isinstance(val, Task) or isinstance(val, Loadable): del val
+            if isinstance(val, __PYGICS__): val.__pygics_inspect_release__()
         del mod
 
 def __link_module__(path, name):
@@ -330,8 +329,8 @@ def server(ip,
     #===========================================================================
     __PygicsServiceEnvironment__.__environment_init__()
     PYGICS.__service_init__(ip, port, clean_init)
-    PYGICS.DIR.RSC = resource['root'] if 'root' in resource else None
-    resource_read = resource['read'] if 'read' in resource else True
+    PYGICS.DIR.RSC = resource['root'] if 'root' in resource else './'
+    resource_read = resource['read'] if 'read' in resource else False
     resource_write = resource['write'] if 'write' in resource else False
     
     #===========================================================================

@@ -8,6 +8,7 @@ import time
 import gevent
 import gevent.queue
 import gevent.lock
+from .core import __PYGICS__
 
 #===============================================================================
 # Tasking Utils
@@ -17,12 +18,12 @@ class Time:
     @classmethod
     def sleep(cls, sec): gevent.sleep(sec)
     
-class Queue(gevent.queue.Queue):
+class Queue(__PYGICS__, gevent.queue.Queue):
     
     def __init__(self, *argv, **kargs):
         gevent.queue.Queue.__init__(self, *argv, **kargs)
 
-class Lock(gevent.lock.Semaphore):
+class Lock(__PYGICS__, gevent.lock.Semaphore):
     
     def __init__(self, *argv, **kargs):
         gevent.lock.Semaphore.__init__(self, *argv, **kargs)
@@ -30,7 +31,7 @@ class Lock(gevent.lock.Semaphore):
 #===============================================================================
 # Tasking
 #===============================================================================
-class Task:
+class Task(__PYGICS__):
     
     @classmethod
     def yielding(cls): gevent.sleep(0)
@@ -42,7 +43,7 @@ class Task:
         self._pygics_thread_delay = delay
         self._pygics_thread_debug = debug
     
-    def __del__(self):
+    def __release__(self):
         self.stop()
     
     def __thread_wrapper__(self):
@@ -88,7 +89,7 @@ class Task:
 #===============================================================================
 # Concurrent Tasking
 #===============================================================================
-class Burst:
+class Burst(__PYGICS__):
     
     def __init__(self, debug=False):
         self.methods = []
@@ -96,7 +97,7 @@ class Burst:
         self.kargs = []
         self.length = 0
         self.debug = debug
-        
+    
     def register(self, method, *argv, **kargs):
         self.methods.append(method)
         self.args.append(argv)
