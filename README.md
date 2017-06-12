@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.5
+version : 0.4.6
 
-last change : add requirements methods
+last change : pip installing bug fix
 
 ## What is Pygics?
 

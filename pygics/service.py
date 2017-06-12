@@ -7,7 +7,6 @@ Created on 2017. 3. 29.
 import os
 import re
 import sys
-import pip
 import json
 import uuid
 import shutil
@@ -283,7 +282,7 @@ def install_module(path, static=False):
             print('system package %s is installed' % path)
             return
         elif 'pip::' == cmd:
-            if pip.main(['install', '-q', path.replace('pip::', '')]) != 0: raise Exception('could not install %s' % path)
+            if os.system('pip install -q %s' % path.replace('pip::', '')) != 0: raise Exception('could not install %s' % path)
             print('package %s is installed' % path)
             return
         elif 'app::' == cmd or 'exp::' == cmd:
