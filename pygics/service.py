@@ -63,7 +63,7 @@ class __PygicsServiceEnvironment__:
     @classmethod
     def __module_pwd__(cls):
         mod = inspect.getmodule(inspect.stack()[1][0])
-        mod_path, _ = os.path.split(mod.__file__)
+        mod_path, _ = os.path.split(os.path.abspath(mod.__file__))
         return mod_path
             
     @classmethod    

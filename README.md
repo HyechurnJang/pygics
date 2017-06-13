@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.7
+version : 0.4.8
 
-last change : parse javascript format query 
+last change : fix PWD() to absolute path 
 
 ## What is Pygics?
 
