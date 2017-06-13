@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.6
+version : 0.4.7
 
-last change : pip installing bug fix
+last change : parse javascript format query 
 
 ## What is Pygics?
 

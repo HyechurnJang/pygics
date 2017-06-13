@@ -139,8 +139,11 @@ class Request:
         self.kargs = {}
         qs = req['QUERY_STRING'].split('&')
         for q in qs:
-            kv = re.match('(?P<key>\w+)=("|%22|%27)?(?P<val>[\w\.\-\:]+)("|%22|%27)?', q)
-            if kv: self.kargs[kv.group('key')] = kv.group('val')
+            kv = re.match('(?P<key>[\w\%]+)=("|%22|%27)?(?P<val>[\w\.\-\:]*)("|%22|%27)?', q)
+            if kv:
+                k = kv.group('key')
+                if '%5' in k: k = k.replace('%5B', '[').replace('%5D', ']')
+                self.kargs[k] = kv.group('val')
         if self.method in ['POST', 'PUT']:
             raw_data = req['wsgi.input'].read()
             if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE']
@@ -163,7 +166,7 @@ class Request:
     def __str__(self):
         return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kargs, self.data)
 
-def api(method, url, content_type=ContentType.AppJson, url_absolute=False):
+def api(method, url, content_type=ContentType.AppJson, url_absolute=False, pure_json=False):
     def api_wrapper(func):
         def decofunc(req, res):
             try: ret = func(req, *req.args, **req.kargs)
@@ -177,7 +180,8 @@ def api(method, url, content_type=ContentType.AppJson, url_absolute=False):
                 return json.dumps({'error' : str(e)})
             if content_type == ContentType.AppJson:
                 res('200 OK', [('Content-Type', content_type)])
-                return json.dumps({'result' : ret})
+                if pure_json: return json.dumps(ret)
+                else: return json.dumps({'result' : ret})
             res('200 OK', [('Content-Type', content_type)])
             return ret
         
