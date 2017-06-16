@@ -18,12 +18,12 @@ import logging
 import logging.handlers
 from gevent.pywsgi import WSGIServer
 from .core import __PYGICS__
-from .task import Task, Burst
+from .task import Burst
 
 class __PygicsServiceEnvironment__:
     
     class __PygicsServiceDirectory__:
-        ROOT = os.path.expanduser('~') + '/.pygics'
+        ROOT = os.path.split(os.path.abspath(__file__))[0]
         SVC = None
         MOD = None
         RSC = None
@@ -67,9 +67,10 @@ class __PygicsServiceEnvironment__:
         return mod_path
             
     @classmethod    
-    def __service_init__(cls, ip, port, clean_init):
+    def __service_init__(cls, ip, port, root, clean_init):
         cls.NET.IP = ip
         cls.NET.PORT = port
+        cls.DIR.ROOT = root + '/__run__'
         cls.DIR.SVC = cls.DIR.ROOT + '/%s_%s' % (ip, str(str(port)))
         cls.DIR.MOD = cls.DIR.SVC + '/modules'
         if not os.path.exists(cls.DIR.ROOT): os.mkdir(cls.DIR.ROOT)
@@ -379,7 +380,9 @@ def server(ip,
     # Initial Setup
     #===========================================================================
     __PygicsServiceEnvironment__.__environment_init__()
-    PYGICS.__service_init__(ip, port, clean_init)
+    
+    _caller = inspect.getmodule(inspect.stack()[1][0])
+    PYGICS.__service_init__(ip, port, os.path.split(os.path.abspath(_caller.__file__))[0], clean_init)
     PYGICS.DIR.RSC = resource['root'] if 'root' in resource else './'
     resource_read = resource['read'] if 'read' in resource else False
     resource_write = resource['write'] if 'write' in resource else False

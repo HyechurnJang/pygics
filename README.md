@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.8
+version : 0.4.9
 
-last change : fix PWD() to absolute path 
+last change : move running files of service to service calling directory  
 
 ## What is Pygics?
 
