@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.9
+version : 0.4.10
 
-last change : move running files of service to service calling directory  
+last change : "/" url processing & module desc
 
 ## What is Pygics?
 

@@ -7,6 +7,7 @@ Created on 2017. 3. 29.
 import os
 import re
 import sys
+import time
 import json
 import uuid
 import shutil
@@ -45,6 +46,7 @@ class __PygicsServiceEnvironment__:
     class __PygicsServiceModule__:
         STATIC = []
         UPLOAD = []
+        DESC = {}
         
     DIR = __PygicsServiceDirectory__
     NET = __PygicsServiceNetwork__
@@ -162,7 +164,8 @@ class Request:
             else: raise Request.NotFound()
         self.api = ref['__api_ref__']
         self.url = ref['__api_url__']
-        self.args = filter(None, re.sub(self.url, '', self.path, 1).split('/'))
+        if self.path + '/' == self.url: self.args = []
+        else: self.args = filter(None, re.sub(self.url, '', self.path, 1).split('/'))
         
     def __str__(self):
         return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kargs, self.data)
@@ -214,6 +217,9 @@ def api(method, url, content_type=ContentType.AppJson, url_absolute=False, pure_
 def __save_module_dep__():
     with open(PYGICS.DIR.SVC + '/modules.dep', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.UPLOAD))
 
+def __save_module_dsc__():
+    with open(PYGICS.DIR.SVC + '/modules.dsc', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.DESC))
+
 def __remove_module_file__(name):
     py_path = '%s/%s.py' % (PYGICS.DIR.MOD, name)
     pyc_path = '%s/%s.pyc' % (PYGICS.DIR.MOD, name)
@@ -256,16 +262,25 @@ def __install_requirements__(path, static=False):
             if rq != None: span.append(rq.group('package'))
         packages = span
         for path in packages: install_module(path, static)
+        return packages
+    return []
     
 def uninstall_module(name):
     if name in PYGICS.MOD.STATIC: raise Exception('could not uninstall static module %s' % name)
     if name not in PYGICS.MOD.UPLOAD: raise Exception('could not find module %s' % name)
     __unlink_module__(name)
     PYGICS.MOD.UPLOAD.remove(name)
+    i_name = None
+    for k, v in PYGICS.MOD.DESC:
+        if v['name'] == name:
+            i_name = k
+            break
+    if i_name != None: PYGICS.MOD.DESC.pop(i_name)
     __save_module_dep__()
+    __save_module_dsc__()
     __remove_module_file__(name)
 
-def install_module(path, static=False):
+def install_module(path, static=False, repo_path=None):
     if '::' in path:
         cmd = path[:5]
         if 'sys::' == cmd:
@@ -299,7 +314,7 @@ def install_module(path, static=False):
             if name in PYGICS.MOD.UPLOAD: return
             mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
             if os.path.exists(mod_path) and os.path.isdir(mod_path):
-                install_module(mod_path, static)
+                install_module(mod_path, static, path)
                 return
             gzip_path = '%s.zip' % mod_path
             uzip_path = '%s/%s-%s' % (mod_path, name, branch)
@@ -313,8 +328,10 @@ def install_module(path, static=False):
             shutil.move(uzip_path, PYGICS.DIR.MOD)
             shutil.rmtree(mod_path)
             os.rename(move_path, mod_path)
-            __install_requirements__(mod_path + '/requirements.txt', static)
+            deps = __install_requirements__(mod_path + '/requirements.txt', static)
             __link_module__(PYGICS.DIR.MOD, name)
+            PYGICS.MOD.DESC[path] = {'path' : path, 'base' : cmd[:3], 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+            __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)
@@ -332,8 +349,10 @@ def install_module(path, static=False):
                 __remove_module_file__(name)
                 with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
                 os.remove(path)
-                __install_requirements__(mod_path + '/requirements.txt', static)
+                deps = __install_requirements__(mod_path + '/requirements.txt', static)
                 __link_module__(PYGICS.DIR.MOD, name)
+                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                __save_module_dsc__()
                 if static: PYGICS.MOD.STATIC.append(name)
                 elif name not in PYGICS.MOD.UPLOAD:
                     PYGICS.MOD.UPLOAD.append(name)
@@ -344,6 +363,8 @@ def install_module(path, static=False):
                 __remove_module_file__(name)
                 os.rename(path, '%s/%s.py' % (parent, name))
                 __link_module__(PYGICS.DIR.MOD, name)
+                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                __save_module_dsc__()
                 if static: PYGICS.MOD.STATIC.append(name)
                 elif name not in PYGICS.MOD.UPLOAD:
                     PYGICS.MOD.UPLOAD.append(name)
@@ -351,8 +372,17 @@ def install_module(path, static=False):
         elif ext == '':
             if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
             elif name in PYGICS.MOD.UPLOAD: return
-            __install_requirements__(path + '/requirements.txt', static)
+            deps = __install_requirements__(path + '/requirements.txt', static)
             __link_module__(parent, name)
+            if repo_path != None:
+                rpaths = repo_path.split('::')
+                repo = rpaths[0]
+                rname = rpaths[1]
+                branch = rpaths[2] if len(rpaths) == 3 else 'master'
+                PYGICS.MOD.DESC[repo_path] = {'path' : repo_path, 'base' : repo, 'name' : rname, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+            else:
+                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+            __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)
@@ -361,6 +391,8 @@ def install_module(path, static=False):
             if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
             elif name in PYGICS.MOD.UPLOAD: return
             __link_module__(parent, name)
+            PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+            __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)
