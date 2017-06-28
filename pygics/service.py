@@ -99,6 +99,10 @@ class __PygicsServiceEnvironment__:
             with open(cls.DIR.SVC + '/service.uuid', 'w') as fd: fd.write(cls.MNG.UUID)
         if not os.path.exists(cls.DIR.SVC + '/modules.dep'):
             with open(cls.DIR.SVC + '/modules.dep', 'w') as fd: fd.write('[]')
+        if not os.path.exists(cls.DIR.SVC + '/modules.dsc'):
+            with open(cls.DIR.SVC + '/modules.dsc', 'w') as fd: fd.write('{}')
+        else:
+            with open(cls.DIR.SVC + '/modules.dsc', 'r') as fd: cls.MOD.DESC = json.loads(fd.read())
         cls.MNG.PLOG = logging.Logger('pygics')
         cls.MNG.MLOG = logging.Logger('pygics-module')
         log_scrn = logging.StreamHandler()
@@ -270,13 +274,9 @@ def uninstall_module(name):
     if name not in PYGICS.MOD.UPLOAD: raise Exception('could not find module %s' % name)
     __unlink_module__(name)
     PYGICS.MOD.UPLOAD.remove(name)
-    i_name = None
-    for k, v in PYGICS.MOD.DESC:
-        if v['name'] == name:
-            i_name = k
-            break
-    if i_name != None: PYGICS.MOD.DESC.pop(i_name)
-    __save_module_dep__()
+    if name in PYGICS.MOD.DESC:
+        PYGICS.MOD.DESC.pop(name)
+        __save_module_dep__()
     __save_module_dsc__()
     __remove_module_file__(name)
 
@@ -330,8 +330,9 @@ def install_module(path, static=False, repo_path=None):
             os.rename(move_path, mod_path)
             deps = __install_requirements__(mod_path + '/requirements.txt', static)
             __link_module__(PYGICS.DIR.MOD, name)
-            PYGICS.MOD.DESC[path] = {'path' : path, 'base' : cmd[:3], 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-            __save_module_dsc__()
+            if name not in PYGICS.MOD.DESC:
+                PYGICS.MOD.DESC[name] = {'path' : path, 'base' : cmd[:3], 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)
@@ -351,8 +352,9 @@ def install_module(path, static=False, repo_path=None):
                 os.remove(path)
                 deps = __install_requirements__(mod_path + '/requirements.txt', static)
                 __link_module__(PYGICS.DIR.MOD, name)
-                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                __save_module_dsc__()
+                if name not in PYGICS.MOD.DESC:
+                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                    __save_module_dsc__()
                 if static: PYGICS.MOD.STATIC.append(name)
                 elif name not in PYGICS.MOD.UPLOAD:
                     PYGICS.MOD.UPLOAD.append(name)
@@ -363,8 +365,9 @@ def install_module(path, static=False, repo_path=None):
                 __remove_module_file__(name)
                 os.rename(path, '%s/%s.py' % (parent, name))
                 __link_module__(PYGICS.DIR.MOD, name)
-                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                __save_module_dsc__()
+                if name not in PYGICS.MOD.DESC:
+                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                    __save_module_dsc__()
                 if static: PYGICS.MOD.STATIC.append(name)
                 elif name not in PYGICS.MOD.UPLOAD:
                     PYGICS.MOD.UPLOAD.append(name)
@@ -379,10 +382,13 @@ def install_module(path, static=False, repo_path=None):
                 repo = rpaths[0]
                 rname = rpaths[1]
                 branch = rpaths[2] if len(rpaths) == 3 else 'master'
-                PYGICS.MOD.DESC[repo_path] = {'path' : repo_path, 'base' : repo, 'name' : rname, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                if rname not in PYGICS.MOD.DESC:
+                    PYGICS.MOD.DESC[rname] = {'path' : repo_path, 'base' : repo, 'name' : rname, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                    __save_module_dsc__()
             else:
-                PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-            __save_module_dsc__()
+                if name not in PYGICS.MOD.DESC:
+                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                    __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)
@@ -391,8 +397,9 @@ def install_module(path, static=False, repo_path=None):
             if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
             elif name in PYGICS.MOD.UPLOAD: return
             __link_module__(parent, name)
-            PYGICS.MOD.DESC[path] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-            __save_module_dsc__()
+            if name not in PYGICS.MOD.DESC:
+                PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+                __save_module_dsc__()
             if static: PYGICS.MOD.STATIC.append(name)
             elif name not in PYGICS.MOD.UPLOAD:
                 PYGICS.MOD.UPLOAD.append(name)

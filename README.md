@@ -2,7 +2,7 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.10
+version : 0.4.11
 
 last change : "/" url processing & module desc
 
