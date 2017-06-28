@@ -4,7 +4,7 @@
 
 version : 0.4.11
 
-last change : "/" url processing & module desc
+last change : modules.dsc management
 
 ## What is Pygics?
 
