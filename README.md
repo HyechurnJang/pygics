@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.3
+version : 0.5.4
 
-last change : add dynamic mimetype 
+last change : bug fix mimetype 
 
 ## What is Pygics?
 

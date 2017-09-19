@@ -156,6 +156,7 @@ class ContentType:
     @classmethod
     def getType(cls, path):
         mimetype, encoding = cls.MTOBJ.guess_type(path)
+        if not mimetype: return ContentType.AppStream
         return mimetype
 
 class Request:
