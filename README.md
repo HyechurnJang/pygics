@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.4
+version : 0.5.5
 
-last change : bug fix mimetype 
+last change : add static content type 
 
 ## What is Pygics?
 

@@ -379,7 +379,7 @@ def __install_module__(path):
         ENV.MOD.save()
         print('module %s is installed' % path)
 
-def api(method, url, **plugins):
+def api(method, url, content_type=None, **plugins):
     def api_wrapper(func):
         modules = []
         for name, option in plugins.items():
@@ -396,19 +396,21 @@ def api(method, url, **plugins):
                 # Run API Processing
                 data = func(req, *req.args, **req.kargs)
                 # Deciding Content Type
-                if isinstance(data, dict) or isinstance(data, list):
-                    data = json.dumps(data)
-                    content_type = ContentType.AppJson
-                elif isinstance(data, str) or isinstance(data, unicode):
-                    content_type = ContentType.TextPlain
-                elif isinstance(data, int) or isinstance(data, float):
-                    data = str(data)
-                    content_type = ContentType.TextPlain
-                elif isinstance(data, types.FileType):
-                    fd = data
-                    content_type = ContentType.getType(fd.name)
-                    data = fd.read()
-                    fd.close()
+                cur_ct = content_type
+                if not cur_ct:
+                    if isinstance(data, dict) or isinstance(data, list):
+                        data = json.dumps(data)
+                        cur_ct = ContentType.AppJson
+                    elif isinstance(data, str) or isinstance(data, unicode):
+                        cur_ct = ContentType.TextPlain
+                    elif isinstance(data, int) or isinstance(data, float):
+                        data = str(data)
+                        cur_ct = ContentType.TextPlain
+                    elif isinstance(data, types.FileType):
+                        fd = data
+                        cur_ct = ContentType.getType(fd.name)
+                        data = fd.read()
+                        fd.close()
             # Exception Processing
             except Response.__HTTP__ as e:
                 res(e.status, e.headers)
@@ -422,7 +424,7 @@ def api(method, url, **plugins):
                 res('500 Internal Server Error', [('Content-Type', ContentType.AppJson)])
                 return json.dumps({'error' : str(e)})
             # Build Response
-            headers = [('Content-Type', content_type)]
+            headers = [('Content-Type', cur_ct)]
             if req._cookies:
                 for k, v in req._cookies.items(): headers.append(('Set-Cookie', '%s=%s' % (k, v)))
             res('200 OK', headers)
