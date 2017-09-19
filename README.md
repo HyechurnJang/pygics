@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.2
+version : 0.5.3
 
-last change : add global function pmd(parent module description) 
+last change : add dynamic mimetype 
 
 ## What is Pygics?
 

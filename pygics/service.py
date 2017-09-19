@@ -19,6 +19,7 @@ import platform
 import logging
 import logging.handlers
 import gevent.monkey
+from mimetypes import MimeTypes
 from gevent.pywsgi import WSGIServer
 from .core import __PYGICS__
 from .task import Burst
@@ -133,18 +134,29 @@ class ENV:
         mod_name = mod.__name__
         mod_path, _ = os.path.split(mod.__file__)
         return mod_path, mod_name
-
+    
 class ContentType:
     
-    AppJson = 'application/json'
+    MTOBJ = MimeTypes()
+    
     AppJS = 'application/javascript'
+    AppJson = 'application/json'
     AppStream = 'application/octet-stream'
-    TextPlain = 'text/plain'
-    TextHtml = 'text/html'
     TextCss = 'text/css'
+    TextHtml = 'text/html'
+    TextPlain = 'text/plain'
+    ImageJpg = 'image/jpeg'
+    ImagePng = 'image/png'
+    ImageGif = 'image/gif'
+    ImageTiff = 'image/tiff'
     
     @classmethod
     def format(cls, val): return ('Content-Type', val)
+    
+    @classmethod
+    def getType(cls, path):
+        mimetype, encoding = cls.MTOBJ.guess_type(path)
+        return mimetype
 
 class Request:
     
@@ -393,13 +405,9 @@ def api(method, url, **plugins):
                     content_type = ContentType.TextPlain
                 elif isinstance(data, types.FileType):
                     fd = data
-                    _, ext = os.path.splitext(fd.name)
+                    content_type = ContentType.getType(fd.name)
                     data = fd.read()
                     fd.close()
-                    if 'htm' in ext: content_type = ContentType.TextHtml
-                    elif 'js' in ext: content_type = ContentType.AppJS
-                    elif 'css' in ext: content_type = ContentType.TextCss
-                    else: content_type = ContentType.AppStream
             # Exception Processing
             except Response.__HTTP__ as e:
                 res(e.status, e.headers)
