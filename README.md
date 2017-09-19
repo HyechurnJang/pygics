@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.1
+version : 0.5.2
 
-last change : requirements.txt to dependency.txt
+last change : add global function pmd(parent module description) 
 
 ## What is Pygics?
 

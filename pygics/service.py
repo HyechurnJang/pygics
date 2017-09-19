@@ -119,12 +119,20 @@ class ENV:
         
         __builtins__['ENV'] = ENV
         __builtins__['pwd'] = ENV.pwd
+        __builtins__['pmd'] = ENV.pmd
     
     @classmethod
     def pwd(cls):
         mod = inspect.getmodule(inspect.stack()[1][0])
         mod_path, _ = os.path.split(os.path.abspath(mod.__file__))
         return mod_path
+    
+    @classmethod
+    def pmd(cls):
+        mod = inspect.getmodule(inspect.stack()[2][0])
+        mod_name = mod.__name__
+        mod_path, _ = os.path.split(mod.__file__)
+        return mod_path, mod_name
 
 class ContentType:
     
