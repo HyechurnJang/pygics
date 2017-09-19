@@ -253,8 +253,8 @@ def __link_module__(path, name):
     if path != '' and path not in sys.path: sys.path.insert(0, path)
     __import__(name)
 
-def __install_requirements__(path):
-    path = path + '/requirements.txt'
+def __install_dependency__(path):
+    path = path + '/dependency.txt'
     if os.path.exists(path):
         with open(path) as fd: modules = fd.readlines()
         span = []
@@ -302,7 +302,7 @@ def __install_module__(path):
         if name in ENV.MOD.PRIO: return
         mod_path = '%s/%s' % (ENV.DIR.MOD, name)
         if os.path.exists(mod_path) and os.path.isdir(mod_path):
-            deps = __install_requirements__(mod_path)
+            deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
         else:
             gzip_path = '%s.zip' % mod_path
@@ -318,7 +318,7 @@ def __install_module__(path):
             shutil.move(uzip_path, ENV.DIR.MOD)
             shutil.rmtree(mod_path)
             os.rename(move_path, mod_path)
-            deps = __install_requirements__(mod_path)
+            deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
         ENV.MOD.DESC[name] = {'path' : path, 'base' : repo, 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
         ENV.MOD.PRIO.append(name)
@@ -335,10 +335,10 @@ def __install_module__(path):
             __remove_module_file__(name)
             with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
             os.remove(path)
-            deps = __install_requirements__(mod_path)
+            deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
         elif os.path.isdir(path):
-            deps = __install_requirements__(path)
+            deps = __install_dependency__(path)
             __link_module__(parent, name)
         elif os.path.isfile(path):
             if ext == '.py':

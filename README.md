@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.0
+version : 0.5.1
 
-last change : content-type awareness
+last change : requirements.txt to dependency.txt
 
 ## What is Pygics?
 
