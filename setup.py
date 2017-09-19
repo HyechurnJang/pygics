@@ -5,7 +5,7 @@ def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).rea
 
 setup(
     name='pygics',
-    version='0.4.11',
+    version='0.5.0',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='hyjang@cisco.com',
@@ -21,5 +21,6 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
     ],
 )

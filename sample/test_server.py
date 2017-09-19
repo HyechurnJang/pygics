@@ -6,8 +6,4 @@ Created on 2017. 5. 16.
 
 import pygics
 
-pygics.server('0.0.0.0',
-              80,
-              resource={'root' : './',
-                        'read' : True,
-                        'write' : True})
+pygics.server('0.0.0.0', 80)

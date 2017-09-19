@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.4.11
+version : 0.5.0
 
-last change : modules.dsc management
+last change : content-type awareness
 
 ## What is Pygics?
 

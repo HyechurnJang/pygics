@@ -10,6 +10,7 @@ import sys
 import time
 import json
 import uuid
+import types
 import shutil
 import zipfile
 import inspect
@@ -17,110 +18,113 @@ import requests
 import platform
 import logging
 import logging.handlers
+import gevent.monkey
 from gevent.pywsgi import WSGIServer
 from .core import __PYGICS__
 from .task import Burst
 
-class __PygicsServiceEnvironment__:
+gevent.monkey.patch_all()
+
+class ENV:
     
-    class __PygicsServiceDirectory__:
+    UUID = None
+    API = {}
+     
+    class DIR:
+         
         ROOT = os.path.split(os.path.abspath(__file__))[0]
         SVC = None
         MOD = None
-        RSC = None
     
-    class __PygicsServiceNetwork__:
+    class NET:
+        
         IP = None
         PORT = None
-        
-    class __PygicsServiceManagement__:
-        UUID = None
-        PLOG = None
-        MLOG = None
     
-    class __PygicsServiceSystem__:
+    class LOG:
+        
+        PYGICS = None
+        MODULE = None
+    
+    class SYS:
+        
         OS = None
         DIST = None
         VER = None
     
-    class __PygicsServiceModule__:
-        STATIC = []
-        UPLOAD = []
+    class MOD:
+        
+        PRIO = []
         DESC = {}
         
-    DIR = __PygicsServiceDirectory__
-    NET = __PygicsServiceNetwork__
-    MNG = __PygicsServiceManagement__
-    SYS = __PygicsServiceSystem__
-    MOD = __PygicsServiceModule__
-    API = {'GET' : {}, 'POST' : {}, 'PUT' : {}, 'DELETE' : {}}
+        @classmethod
+        def save(cls):
+            with open(ENV.DIR.SVC + '/modules.json', 'w') as fd:
+                fd.write(json.dumps({'prio' : ENV.MOD.PRIO, 'desc' : ENV.MOD.DESC}))
+        
+        @classmethod
+        def install(cls, path): __install_module__(path)
+        
+        @classmethod
+        def uninstall(cls, name): __uninstall_module__(name)
     
     @classmethod
-    def __environment_init__(cls):
-        if 'PYGICS' not in __builtins__:
-            __builtins__['PYGICS'] = __PygicsServiceEnvironment__
-        if 'PWD' not in __builtins__:
-            __builtins__['PWD'] = __PygicsServiceEnvironment__.__module_pwd__
-    
-    @classmethod
-    def __module_pwd__(cls):
-        mod = inspect.getmodule(inspect.stack()[1][0])
-        mod_path, _ = os.path.split(os.path.abspath(mod.__file__))
-        return mod_path
-            
-    @classmethod    
-    def __service_init__(cls, ip, port, root, clean_init):
+    def init(cls, ip, port, root):
         cls.NET.IP = ip
         cls.NET.PORT = port
-        cls.DIR.ROOT = root + '/__run__'
-        cls.DIR.SVC = cls.DIR.ROOT + '/%s_%s' % (ip, str(str(port)))
+        cls.DIR.ROOT = root
+        cls.DIR.SVC = cls.DIR.ROOT + '/__run__'
         cls.DIR.MOD = cls.DIR.SVC + '/modules'
-        if not os.path.exists(cls.DIR.ROOT): os.mkdir(cls.DIR.ROOT)
-        if clean_init: shutil.rmtree(cls.DIR.SVC)
         if not os.path.exists(cls.DIR.SVC): os.mkdir(cls.DIR.SVC)
         if not os.path.exists(cls.DIR.MOD): os.mkdir(cls.DIR.MOD)
         l_os, l_ver, _ = platform.dist()
         w_os, w_ver, _, _ = platform.win32_ver()
-        if l_os != '':
+        if l_os:
             cls.SYS.OS = 'linux'
             cls.SYS.DIST = l_os.lower()
             cls.SYS.VER = l_ver
-        elif w_os != '':
+        elif w_os:
             cls.SYS.OS = 'windows'
             cls.SYS.DIST = w_os.lower()
             cls.SYS.VER = w_ver
         else:
             cls.SYS.OS = 'unknown'
+            cls.SYS.DIST = 'unknown'
             cls.SYS.VER = 'unknown'
         if os.path.exists(cls.DIR.SVC + '/service.uuid'):
-            with open(cls.DIR.SVC + '/service.uuid') as fd: cls.MNG.UUID = fd.read()
+            with open(cls.DIR.SVC + '/service.uuid') as fd: cls.UUID = fd.read()
         else:
-            cls.MNG.UUID = str(uuid.uuid4()).replace('-', '')
-            with open(cls.DIR.SVC + '/service.uuid', 'w') as fd: fd.write(cls.MNG.UUID)
-        if not os.path.exists(cls.DIR.SVC + '/modules.dep'):
-            with open(cls.DIR.SVC + '/modules.dep', 'w') as fd: fd.write('[]')
-        if not os.path.exists(cls.DIR.SVC + '/modules.dsc'):
-            with open(cls.DIR.SVC + '/modules.dsc', 'w') as fd: fd.write('{}')
-        else:
-            with open(cls.DIR.SVC + '/modules.dsc', 'r') as fd: cls.MOD.DESC = json.loads(fd.read())
-        cls.MNG.PLOG = logging.Logger('pygics')
-        cls.MNG.MLOG = logging.Logger('pygics-module')
+            cls.UUID = str(uuid.uuid4()).replace('-', '')
+            with open(cls.DIR.SVC + '/service.uuid', 'w') as fd: fd.write(cls.UUID)
+        if not os.path.exists(cls.DIR.SVC + '/modules.json'):
+            with open(cls.DIR.SVC + '/modules.json', 'w') as fd: fd.write(json.dumps({'prio' : [], 'desc' : []}))
+        cls.LOG.PYGICS = logging.Logger('pygics')
+        cls.LOG.MODULE = logging.Logger('pygics-module')
         log_scrn = logging.StreamHandler()
         plog_file = logging.handlers.TimedRotatingFileHandler(cls.DIR.SVC + '/pygics.log', when='D', backupCount=7)
         mlog_file = logging.handlers.TimedRotatingFileHandler(cls.DIR.SVC + '/modules.log', when='D', backupCount=7)
         mlog_file.setFormatter(logging.Formatter('[%(asctime)s] %(message)s'))
-        cls.MNG.PLOG.addHandler(log_scrn)
-        cls.MNG.PLOG.addHandler(plog_file)
-        cls.MNG.MLOG.addHandler(log_scrn)
-        cls.MNG.MLOG.addHandler(mlog_file)
+        cls.LOG.PYGICS.addHandler(log_scrn)
+        cls.LOG.PYGICS.addHandler(plog_file)
+        cls.LOG.MODULE.addHandler(log_scrn)
+        cls.LOG.MODULE.addHandler(mlog_file)
         
-        class __PygicsServiceModuleLogRedirect__:
+        class __PygicsModuleLogRedirect__:
             def __init__(self, logger): self.logger = logger
             def write(self, msg):
                 if msg == '\n': pass
                 else: self.logger.info(msg)
         
-        sys.stdout = __PygicsServiceModuleLogRedirect__(cls.MNG.MLOG)
+        sys.stdout = __PygicsModuleLogRedirect__(cls.LOG.MODULE)
+        
+        __builtins__['ENV'] = ENV
+        __builtins__['pwd'] = ENV.pwd
+    
+    @classmethod
+    def pwd(cls):
+        mod = inspect.getmodule(inspect.stack()[1][0])
+        mod_path, _ = os.path.split(os.path.abspath(mod.__file__))
+        return mod_path
 
 class ContentType:
     
@@ -130,20 +134,30 @@ class ContentType:
     TextPlain = 'text/plain'
     TextHtml = 'text/html'
     TextCss = 'text/css'
+    
+    @classmethod
+    def format(cls, val): return ('Content-Type', val)
 
 class Request:
     
-    class NotFound(Exception):
-        def __init__(self): Exception.__init__(self, 'method or url mismatched')
-            
     def __init__(self, req):
         self.request = req
         self.method = req['REQUEST_METHOD']
         self.path = req['PATH_INFO']
-        self.header = {}
-        for key in sorted(req.keys()):
-            if 'HTTP_' in key: self.header[key.replace('HTTP_', '')] = req[key]
+        self.headers = {}
+        self.cookies = {}
+        self._cookies = {}
         self.kargs = {}
+        # Headers
+        for key in sorted(req.keys()):
+            if 'HTTP_' in key: self.headers[key.replace('HTTP_', '')] = req[key]
+        # Cookies
+        if 'COOKIE' in self.headers:
+            cookies = self.headers['COOKIE'].split(';')
+            for cookie in cookies:
+                kv = re.match('(?P<key>[\w\-\.]+)=(?P<val>\S+)', cookie)
+                if kv: self.cookies[kv.group('key')] = kv.group('val')
+        # Query
         qs = req['QUERY_STRING'].split('&')
         for q in qs:
             kv = re.match('(?P<key>[\w\%]+)=("|%22|%27)?(?P<val>[\w\.\-\:]*)("|%22|%27)?', q)
@@ -151,6 +165,7 @@ class Request:
                 k = kv.group('key')
                 if '%5' in k: k = k.replace('%5B', '[').replace('%5D', ']')
                 self.kargs[k] = kv.group('val')
+        # Data
         if self.method in ['POST', 'PUT']:
             raw_data = req['wsgi.input'].read()
             if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE']
@@ -158,95 +173,76 @@ class Request:
             if ContentType.AppJson in content_type: self.data = json.loads(raw_data)
             else: self.data = raw_data
         else: self.data = None
+        # Mapping
         rns = filter(None, self.path.split('/'))
-        rns_len = len(rns)
-        ref = PYGICS.API[self.method]
-        for i in range(0, rns_len):
-            rn = rns[i]
-            if rn in ref: ref = ref[rns[i]]
-            elif '__api_ref__' in ref: break
-            else: raise Request.NotFound()
-        self.api = ref['__api_ref__']
-        self.url = ref['__api_url__']
-        if self.path + '/' == self.url: self.args = []
-        else: self.args = filter(None, re.sub(self.url, '', self.path, 1).split('/'))
-        
-    def __str__(self):
-        return '%s : %s\nHeader : %s\nArgs : %s\nQuery : %s\nData : %s' % (self.method, self.url, self.header, self.args, self.kargs, self.data)
-
-def api(method, url, content_type=ContentType.AppJson, url_absolute=False, pure_json=False):
-    def api_wrapper(func):
-        def decofunc(req, res):
-            try: ret = func(req, *req.args, **req.kargs)
-            except TypeError as e:
-                PYGICS.MNG.MLOG.exception(str(e))
-                res('400 Bad Request', [('Content-Type', ContentType.AppJson)])
-                return json.dumps({'error' : str(e)})
-            except Exception as e:
-                PYGICS.MNG.MLOG.exception(str(e))
-                res('500 Internal Server Error', [('Content-Type', ContentType.AppJson)])
-                return json.dumps({'error' : str(e)})
-            if content_type == ContentType.AppJson:
-                res('200 OK', [('Content-Type', content_type)])
-                if pure_json: return json.dumps(ret)
-                else: return json.dumps({'result' : ret})
-            res('200 OK', [('Content-Type', content_type)])
-            return ret
-        
-        __PygicsServiceEnvironment__.__environment_init__()
-        
-        if url[0] != '/': furl = '/' + url
-        else: furl = url
-        if url_absolute: dn = furl
-        else:
-            module_name = func.__module__
-            func_name = func.__name__
-            if module_name == '__main__': dn = furl
-            elif module_name == 'pygics.service': dn = '/pygics%s' % furl 
-            else: dn = '/%s%s' % (module_name, furl)
-        rns = filter(None, dn.split('/'))
-        ref = PYGICS.API[method.upper()]
+        ref = ENV.API
         for rn in rns:
-            if rn not in ref: ref[rn] = {}
-            ref = ref[rn]
-        ref['__api_url__'] = dn
-        ref['__api_ref__'] = decofunc
-        if url_absolute: print('register api <%s:%s> by absolute path, result-type=%s' % (method.upper(), dn, content_type))
-        else: print('register api <%s:%s> link to <%s.%s>, result-type=%s' % (method.upper(), dn, module_name, func_name, content_type))
+            if rn in ref: ref = ref[rn]
+            elif '__methods__' in ref and self.method in ref['__methods__']: break
+            else: raise Response.NotFound()
+        self.api = ref['__methods__'][self.method]
+        self.url = ref['__api_url__']
+        if self.path == self.url: self.args = []
+        else: self.args = filter(None, re.sub(self.url, '', self.path, 1).split('/'))
+    
+    def setCookie(self, key, val): self._cookies[key] = val
         
-        return decofunc
-    return api_wrapper
+class Response:
+    
+    class __HTTP__(Exception):
+        
+        def __init__(self, status, headers, data):
+            Exception.__init__(self)
+            self.status = status
+            self.headers = headers
+            self.data = data
+    
+    class __ERR__(__HTTP__):
+        
+        def __init__(self, status, headers, data):
+            headers.append(ContentType.format(ContentType.AppJson))
+            Response.__HTTP__.__init__(self, status, headers, json.dumps({'error' : data}))
+    
+    class OK(__HTTP__): #200
+        def __init__(self, headers=[], data='ok'):
+            Response.__HTTP__.__init__(self, '200 OK', headers, data)
+            
+    class Redirect(__HTTP__): #302
+        def __init__(self, url, headers=[], data='redirect'):
+            headers.append(('Location', url))
+            Response.__HTTP__.__init__(self, '302 Found', headers, data)
+    
+    class BadRequest(__ERR__): #400
+        def __init__(self, headers=[], data='bad request'):
+            Response.__ERR__.__init__(self, '400 Bad Request', headers, data)
+    
+    class Unauthorized(__ERR__): #401
+        def __init__(self, headers=[], data='Unauthorized'):
+            headers.append(('WWW-Authenticate', 'Basic realm="pygics"'))
+            Response.__ERR__.__init__(self, '401 Unauthorized', headers, data)
+    
+    class NotFound(__ERR__): #404
+        def __init__(self, headers=[], data='not found'):
+            Response.__ERR__.__init__(self, '404 Not Found', headers, data)
+    
+    class ServerError(__ERR__): #500
+        def __init__(self, headers=[], data='internal server error'):
+            Response.__ERR__.__init__(self, '500 Internal Server Error', headers, data)
 
-
-def __save_module_dep__():
-    with open(PYGICS.DIR.SVC + '/modules.dep', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.UPLOAD))
-
-def __save_module_dsc__():
-    with open(PYGICS.DIR.SVC + '/modules.dsc', 'w') as fd: fd.write(json.dumps(PYGICS.MOD.DESC))
-
+#===============================================================================
+# Internal Module Management
+#===============================================================================
 def __remove_module_file__(name):
-    py_path = '%s/%s.py' % (PYGICS.DIR.MOD, name)
-    pyc_path = '%s/%s.pyc' % (PYGICS.DIR.MOD, name)
-    pack_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-    if os.path.exists(pack_path) and os.path.isdir(pack_path): shutil.rmtree(pack_path)
-    elif os.path.exists(py_path) and os.path.isfile(py_path):
-        os.remove(py_path)
-        if os.path.exists(pyc_path) and os.path.isfile(pyc_path):
-            os.remove(pyc_path)
+    mod_path = '%s/%s' % (ENV.DIR.MOD, name)
+    if os.path.exists(mod_path) and os.path.isdir(mod_path):
+        shutil.rmtree(mod_path)
+        return True
+    return False
 
 def __unlink_module__(name):
-    if name in PYGICS.API['GET']:
-        PYGICS.API['GET'].pop(name)
-        PYGICS.MNG.MLOG.info('delete api <GET:/%s/*>' % name)
-    if name in PYGICS.API['POST']:
-        PYGICS.API['POST'].pop(name)
-        PYGICS.MNG.MLOG.info('delete api <POST:/%s/*>' % name)
-    if name in PYGICS.API['PUT']:
-        PYGICS.API['PUT'].pop(name)
-        PYGICS.MNG.MLOG.info('delete api <PUT:/%s/*>' % name)
-    if name in PYGICS.API['DELETE']:
-        PYGICS.API['DELETE'].pop(name)
-        PYGICS.MNG.MLOG.info('delete api <DELETE:/%s/*>' % name)
+    if name in ENV.API:
+        ENV.API.pop(name)
+        ENV.LOG.MODULE.info('delete api /%s/*' % name)
     if name in sys.modules:
         mod = sys.modules.pop(name)
         for _, val in mod.__dict__.items():
@@ -257,187 +253,208 @@ def __link_module__(path, name):
     if path != '' and path not in sys.path: sys.path.insert(0, path)
     __import__(name)
 
-def __install_requirements__(path, static=False):
+def __install_requirements__(path):
+    path = path + '/requirements.txt'
     if os.path.exists(path):
-        with open(path) as fd: packages = fd.readlines()
+        with open(path) as fd: modules = fd.readlines()
         span = []
-        for path in packages:
-            rq = re.match('\s*(?P<package>[\w\.\-\:]+)', path)
-            if rq != None: span.append(rq.group('package'))
-        packages = span
-        for path in packages: install_module(path, static)
-        return packages
+        for module in modules:
+            rq = re.match('\s*(?P<module>[\w\.\-\:]+)', module)
+            if rq != None: span.append(rq.group('module'))
+        modules = span
+        for module in modules: __install_module__(module)
+        return modules
     return []
     
-def uninstall_module(name):
-    if name in PYGICS.MOD.STATIC: raise Exception('could not uninstall static module %s' % name)
-    if name not in PYGICS.MOD.UPLOAD: raise Exception('could not find module %s' % name)
+def __uninstall_module__(name):
+    if name not in ENV.MOD.PRIO: raise Exception('could not find module %s' % name)
     __unlink_module__(name)
-    PYGICS.MOD.UPLOAD.remove(name)
-    if name in PYGICS.MOD.DESC:
-        PYGICS.MOD.DESC.pop(name)
-        __save_module_dep__()
-    __save_module_dsc__()
+    ENV.MOD.PRIO.remove(name)
+    if name in ENV.MOD.DESC: ENV.MOD.DESC.pop(name)
+    ENV.MOD.save()
     __remove_module_file__(name)
 
-def install_module(path, static=False, repo_path=None):
-    if '::' in path:
-        cmd = path[:5]
-        if 'sys::' == cmd:
-            os_desc = path.split('::')
-            os_type = os_desc[1].lower()
-            os_dist = os_desc[2] if len(os_desc) > 2 else None
-            os_ver = os_desc[3] if len(os_desc) > 3 else None
-            if os_type != PYGICS.SYS.OS: raise Exception('could not support operation system')
-            elif os_dist != None and os_dist != PYGICS.SYS.DIST: raise Exception('could not support operation system')
-            elif os_ver != None and os_ver != PYGICS.SYS.VER: raise Exception('could not support operation system')
-            print('system %s is matched' % path)
-            return
-        elif 'pkg::' == cmd:
-            package = path.replace('pkg::', '')
-            if PYGICS.SYS.DIST in ['centos', 'redhat', 'fedora']: syscmd = 'yum install -q -y %s'
-            elif PYGICS.SYS.DIST in ['ubuntu', 'debian']: syscmd = 'apt-get install -q -y %s'
-            else: raise Exception('could not support installing system package')
-            if os.system(syscmd % package) != 0: raise Exception('could not install system package %s' % path)
-            print('system package %s is installed' % path)
-            return
-        elif 'pip::' == cmd:
-            if os.system('pip install -q %s' % path.replace('pip::', '')) != 0: raise Exception('could not install %s' % path)
-            print('package %s is installed' % path)
-            return
-        elif 'app::' == cmd or 'exp::' == cmd:
-            repo_desc = path.split('::')
-            repo = repo_desc[0]
-            name = repo_desc[1]
-            branch = repo_desc[2] if len(repo_desc) == 3 else 'master'
-            if name in PYGICS.MOD.STATIC: return
-            if name in PYGICS.MOD.UPLOAD: return
-            mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-            if os.path.exists(mod_path) and os.path.isdir(mod_path):
-                install_module(mod_path, static, path)
-                return
+def __install_module__(path):
+    if re.search('^sys::', path):
+        os_desc = path.split('::')
+        os_type = os_desc[1].lower()
+        os_dist = os_desc[2] if len(os_desc) > 2 else None
+        os_ver = os_desc[3] if len(os_desc) > 3 else None
+        if os_type != ENV.SYS.OS: raise Exception('could not support operation system')
+        elif os_dist != None and os_dist != ENV.SYS.DIST: raise Exception('could not support operation system')
+        elif os_ver != None and os_ver != ENV.SYS.VER: raise Exception('could not support operation system')
+        print('system %s is matched' % path)
+    elif re.search('^pkg::', path):
+        package = path.replace('pkg::', '')
+        if ENV.SYS.DIST in ['centos', 'redhat', 'fedora']: syscmd = 'yum install -q -y %s'
+        elif ENV.SYS.DIST in ['ubuntu', 'debian']: syscmd = 'apt-get install -q -y %s'
+        else: raise Exception('could not support installing system package')
+        if os.system(syscmd % package) != 0: raise Exception('could not install system package %s' % path)
+        print('system package %s is installed' % path)
+    elif re.search('^pip::', path):
+        if os.system('pip install -q %s' % path.replace('pip::', '')) != 0: raise Exception('could not install %s' % path)
+        print('package %s is installed' % path)
+    elif re.search('^app::', path) or re.search('^exp::', path):
+        repo_desc = path.split('::')
+        repo = repo_desc[0]
+        name = repo_desc[1]
+        branch = repo_desc[2] if len(repo_desc) > 2 else 'master'
+        if name in ENV.MOD.PRIO: return
+        mod_path = '%s/%s' % (ENV.DIR.MOD, name)
+        if os.path.exists(mod_path) and os.path.isdir(mod_path):
+            deps = __install_requirements__(mod_path)
+            __link_module__(ENV.DIR.MOD, name)
+        else:
             gzip_path = '%s.zip' % mod_path
             uzip_path = '%s/%s-%s' % (mod_path, name, branch)
-            move_path = '%s/%s-%s' % (PYGICS.DIR.MOD, name, branch)
+            move_path = '%s/%s-%s' % (ENV.DIR.MOD, name, branch)
             if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-            else: resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+            elif repo == 'exp': resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+            else: raise Exception('incorrect repository name %s' % repo)
             if resp.status_code != 200: raise Exception('could not find %s' % path)
             with open(gzip_path, 'wb') as fd: fd.write(resp.content)
             with zipfile.ZipFile(gzip_path, 'r') as fd: fd.extractall(mod_path)
             os.remove(gzip_path)
-            shutil.move(uzip_path, PYGICS.DIR.MOD)
+            shutil.move(uzip_path, ENV.DIR.MOD)
             shutil.rmtree(mod_path)
             os.rename(move_path, mod_path)
-            deps = __install_requirements__(mod_path + '/requirements.txt', static)
-            __link_module__(PYGICS.DIR.MOD, name)
-            if name not in PYGICS.MOD.DESC:
-                PYGICS.MOD.DESC[name] = {'path' : path, 'base' : cmd[:3], 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                __save_module_dsc__()
-            if static: PYGICS.MOD.STATIC.append(name)
-            elif name not in PYGICS.MOD.UPLOAD:
-                PYGICS.MOD.UPLOAD.append(name)
-                __save_module_dep__()
-            print('module %s is installed' % path)
-            return
+            deps = __install_requirements__(mod_path)
+            __link_module__(ENV.DIR.MOD, name)
+        ENV.MOD.DESC[name] = {'path' : path, 'base' : repo, 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+        ENV.MOD.PRIO.append(name)
+        ENV.MOD.save()
+        print('module %s is installed' % path)
     else:
+        if not os.path.exists(path): raise Exception('incorrect module path %s' % path)
         parent, name = os.path.split(path)
         name, ext = os.path.splitext(name)
-        if ext == '.raw':
-            if zipfile.is_zipfile(path):
-                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                mod_path = '%s/%s' % (PYGICS.DIR.MOD, name)
-                if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
-                __remove_module_file__(name)
-                with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
-                os.remove(path)
-                deps = __install_requirements__(mod_path + '/requirements.txt', static)
-                __link_module__(PYGICS.DIR.MOD, name)
-                if name not in PYGICS.MOD.DESC:
-                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                    __save_module_dsc__()
-                if static: PYGICS.MOD.STATIC.append(name)
-                elif name not in PYGICS.MOD.UPLOAD:
-                    PYGICS.MOD.UPLOAD.append(name)
-                    __save_module_dep__()
-            else:
-                if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-                if name in PYGICS.MOD.UPLOAD: __unlink_module__(name)
-                __remove_module_file__(name)
-                os.rename(path, '%s/%s.py' % (parent, name))
-                __link_module__(PYGICS.DIR.MOD, name)
-                if name not in PYGICS.MOD.DESC:
-                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'api', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                    __save_module_dsc__()
-                if static: PYGICS.MOD.STATIC.append(name)
-                elif name not in PYGICS.MOD.UPLOAD:
-                    PYGICS.MOD.UPLOAD.append(name)
-                    __save_module_dep__()
-        elif ext == '':
-            if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-            elif name in PYGICS.MOD.UPLOAD: return
-            deps = __install_requirements__(path + '/requirements.txt', static)
+        if name in ENV.MOD.PRIO: return
+        if zipfile.is_zipfile(path):
+            mod_path = '%s/%s' % (ENV.DIR.MOD, name)
+            if name in ENV.MOD.PRIO: __unlink_module__(name)
+            __remove_module_file__(name)
+            with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
+            os.remove(path)
+            deps = __install_requirements__(mod_path)
+            __link_module__(ENV.DIR.MOD, name)
+        elif os.path.isdir(path):
+            deps = __install_requirements__(path)
             __link_module__(parent, name)
-            if repo_path != None:
-                rpaths = repo_path.split('::')
-                repo = rpaths[0]
-                rname = rpaths[1]
-                branch = rpaths[2] if len(rpaths) == 3 else 'master'
-                if rname not in PYGICS.MOD.DESC:
-                    PYGICS.MOD.DESC[rname] = {'path' : repo_path, 'base' : repo, 'name' : rname, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                    __save_module_dsc__()
-            else:
-                if name not in PYGICS.MOD.DESC:
-                    PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                    __save_module_dsc__()
-            if static: PYGICS.MOD.STATIC.append(name)
-            elif name not in PYGICS.MOD.UPLOAD:
-                PYGICS.MOD.UPLOAD.append(name)
-                __save_module_dep__()
-        elif ext == '.py':
-            if name in PYGICS.MOD.STATIC: raise Exception('could not reinstall static module %s' % name)
-            elif name in PYGICS.MOD.UPLOAD: return
-            __link_module__(parent, name)
-            if name not in PYGICS.MOD.DESC:
-                PYGICS.MOD.DESC[name] = {'path' : path, 'base' : 'local', 'name' : name, 'dist' : '', 'deps' : [], 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-                __save_module_dsc__()
-            if static: PYGICS.MOD.STATIC.append(name)
-            elif name not in PYGICS.MOD.UPLOAD:
-                PYGICS.MOD.UPLOAD.append(name)
-                __save_module_dep__()
+        elif os.path.isfile(path):
+            if ext == '.py':
+                deps = []
+                __link_module__(parent, name)
+            elif ext == '.raw':
+                mod_path = '%s/%s' % (ENV.DIR.MOD, name)
+                mod_init = '%s/__init__.py' % mod_path
+                deps = []
+                if not os.path.exists(mod_path): os.mkdir(mod_path)
+                shutil.move(path, mod_init)
+                __link_module__(ENV.DIR.MOD, name)
+            else: raise Exception('could not install %s' % path)
         else: raise Exception('could not install %s' % path)
+        ENV.MOD.DESC[name] = {'path' : path, 'base' : 'local module', 'name' : name, 'dist' : None, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+        ENV.MOD.PRIO.append(name)
+        ENV.MOD.save()
         print('module %s is installed' % path)
-        return
-    raise Exception('%s is incorrect requirement' % path)
+
+def api(method, url, **plugins):
+    def api_wrapper(func):
+        modules = []
+        for name, option in plugins.items():
+            try:
+                module = __import__(name)
+                modules.append((module, option))
+            except Exception as e: print('loading api module %s failed' % name)
+            else: print('loading api module %s success' % name)
+        
+        def decofunc(req, res):
+            try:
+                # Pre-Running Plugins
+                for module in modules: module[0].api_plugin(req, res, **module[1])
+                # Run API Processing
+                data = func(req, *req.args, **req.kargs)
+                # Deciding Content Type
+                if isinstance(data, dict) or isinstance(data, list):
+                    data = json.dumps(data)
+                    content_type = ContentType.AppJson
+                elif isinstance(data, str) or isinstance(data, unicode):
+                    content_type = ContentType.TextPlain
+                elif isinstance(data, int) or isinstance(data, float):
+                    data = str(data)
+                    content_type = ContentType.TextPlain
+                elif isinstance(data, types.FileType):
+                    fd = data
+                    _, ext = os.path.splitext(fd.name)
+                    data = fd.read()
+                    fd.close()
+                    if 'htm' in ext: content_type = ContentType.TextHtml
+                    elif 'js' in ext: content_type = ContentType.AppJS
+                    elif 'css' in ext: content_type = ContentType.TextCss
+                    else: content_type = ContentType.AppStream
+            # Exception Processing
+            except Response.__HTTP__ as e:
+                res(e.status, e.headers)
+                return e.data
+            except TypeError as e:
+                ENV.LOG.MODULE.exception(str(e))
+                res('400 Bad Request', [('Content-Type', ContentType.AppJson)])
+                return json.dumps({'error' : str(e)})
+            except Exception as e:
+                ENV.LOG.MODULE.exception(str(e))
+                res('500 Internal Server Error', [('Content-Type', ContentType.AppJson)])
+                return json.dumps({'error' : str(e)})
+            # Build Response
+            headers = [('Content-Type', content_type)]
+            if req._cookies:
+                for k, v in req._cookies.items(): headers.append(('Set-Cookie', '%s=%s' % (k, v)))
+            res('200 OK', headers)
+            return data
+        
+        module_name = func.__module__
+        func_name = func.__name__
+        method_upper = method.upper()
+        if method_upper not in ['GET', 'POST', 'PUT', 'DELETE']: raise Exception('method %s is not permitted' % method)
+        if url[0] != '/':
+            if module_name == '__main__': dn = '/' + url
+            elif module_name == 'pygics.service': dn = '/pygics/' + url 
+            else: dn = '/%s/%s' % (module_name, url)
+        else:
+            dn = url
+        rns = filter(None, dn.split('/'))
+        ref = ENV.API
+        for rn in rns:
+            if rn not in ref: ref[rn] = {}
+            ref = ref[rn]
+        if '__methods__' not in ref: ref['__methods__'] = {}
+        ref['__methods__'][method_upper] = decofunc
+        ref['__api_url__'] = dn
+        print('register api <%s:%s> link to <%s.%s>' % (method_upper, dn, module_name, func_name))
+        return decofunc
+    
+    return api_wrapper
 
 def server(ip,
            port=80,
-           modules=[],
-           resource={},
-           clean_init=False):
+           *modules):
     
     #===========================================================================
     # Initial Setup
     #===========================================================================
-    __PygicsServiceEnvironment__.__environment_init__()
-    
     _caller = inspect.getmodule(inspect.stack()[1][0])
-    PYGICS.__service_init__(ip, port, os.path.split(os.path.abspath(_caller.__file__))[0], clean_init)
-    PYGICS.DIR.RSC = resource['root'] if 'root' in resource else './'
-    resource_read = resource['read'] if 'read' in resource else False
-    resource_write = resource['write'] if 'write' in resource else False
+    ENV.init(ip, port, os.path.split(os.path.abspath(_caller.__file__))[0])
     
     #===========================================================================
     # Define Built-in Functions
     #===========================================================================
     def __pygics_wsgi_application__(req, res):
         try: req = Request(req)
-        except Request.NotFound as e:
-            PYGICS.MNG.MLOG.exception(str(e))
-            res('404 Not Found', [('Content-Type', 'application/json')])
-            return [json.dumps({'error' : str(e)})]
+        except Response.__HTTP__ as e:
+            res(e.status, e.headers)
+            return [e.data]
         except Exception as e:
-            PYGICS.MNG.MLOG.exception(str(e))
-            res('400 Bad Request', [('Content-Type', 'application/json')])
+            ENV.LOG.MODULE.exception(str(e))
+            res('400 Bad Request', [('Content-Type', ContentType.AppJson)])
             return [json.dumps({'error' : str(e)})]
         return [req.api(req, res)]
 
@@ -446,21 +463,21 @@ def server(ip,
     #===========================================================================
     @api('GET', '/module')
     def get_module(req):
-        return {'static' : PYGICS.MOD.STATIC, 'upload' : PYGICS.MOD.UPLOAD}
+        return {'prio' : ENV.MOD.PRIO, 'desc' : ENV.MOD.DESC}
     
     @api('POST', '/module')
     def upload_module(req, name):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        raw_file = '%s/%s.raw' % (PYGICS.DIR.MOD, name)
+        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
+        raw_file = '%s/%s.raw' % (ENV.DIR.MOD, name)
         with open(raw_file, 'wb') as fd: fd.write(req.data)
-        install_module(raw_file)
-        return 'success'
+        __install_module__(raw_file)
+        return {'result': 'success'}
             
     @api('DELETE', '/module')
     def delete_module(req, name):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
-        uninstall_module(name)
-        return 'success'
+        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
+        __uninstall_module__(name)
+        return {'result': 'success'}
     
     @api('GET', '/repo')
     def get_repo(req):
@@ -480,65 +497,34 @@ def server(ip,
     
     @api('POST', '/repo')
     def install_repo(req, repo, name, branch='master'):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != PYGICS.MNG.UUID: raise Exception('incorrect uuid')
+        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         if repo not in ['app', 'exp']: raise Exception('incorrect repository name')
-        install_module('%s::%s::%s' % (repo, name, branch))
-        return 'success'
+        __install_module__('%s::%s::%s' % (repo, name, branch))
+        return {'result': 'success'}
     
-    @api('GET', '/resource', content_type='application/octet-stream')
-    def download_resource(req, *argv):
-        if PYGICS.DIR.RSC == None or resource_read == False: raise Exception('not permitted')
-        rel_path = '/'.join(argv)
-        if rel_path == '': raise Exception('incorrect resource path')
-        path = '%s/%s' % (PYGICS.DIR.RSC, rel_path)
-        if not os.path.exists(path) or not os.path.isfile(path): raise Exception('could not find object')
-        with open(path, 'rb') as fd:
-            return fd.read()
-    
-    @api('POST', '/resource')
-    def upload_resource(req, *argv):
-        if PYGICS.DIR.RSC == None or resource_write == False: raise Exception('not permitted')
-        rel_path = '/'.join(argv)
-        if rel_path == '': raise Exception('incorrect resource path')
-        path = '%s/%s' % (PYGICS.DIR.RSC, rel_path)
-        parents, _ = os.path.split(path)
-        if not os.path.exists(parents): raise Exception('could not find directory')
-        with open(path, 'wb') as fd:
-            fd.write(req.data)
-        return True
-    
-    @api('DELETE', '/resource')
-    def delete_resource(req, *argv):
-        if PYGICS.DIR.RSC == None or resource_write == False: raise Exception('not permitted')
-        rel_path = '/'.join(argv)
-        if rel_path == '': raise Exception('incorrect resource path')
-        path = '%s/%s' % (PYGICS.DIR.RSC, rel_path)
-        if not os.path.exists(path) and not os.path.isfile(path): raise Exception('could not find object')
-        os.remove(path)
-        return True
-        
     print('module pygics is installed')
     
     #===========================================================================
     # Load Modules
     #===========================================================================
-    for module in modules: install_module(module, static=True)
+    for module in modules: __install_module__(module)
     try:
-        with open(PYGICS.DIR.SVC + '/modules.dep', 'r') as fd: upload_modules = json.loads(fd.read())
+        with open(ENV.DIR.SVC + '/modules.json', 'r') as fd: upload_modules = json.loads(fd.read())
     except Exception as e:
-        PYGICS.MNG.MLOG.exception(str(e))
+        ENV.LOG.MODULE.exception(str(e))
     else:
-        for module in upload_modules:
-            file_path = '%s/%s.py' % (PYGICS.DIR.MOD, module)
-            pack_path = '%s/%s' % (PYGICS.DIR.MOD, module)
-            if os.path.isfile(file_path): install_module(file_path)
-            elif os.path.isdir(pack_path): install_module(pack_path)
-    
+        try:
+            for name in upload_modules['prio']:
+                __install_module__(upload_modules['desc'][name]['path'])
+        except Exception as e:
+            ENV.LOG.MODULE.exception(str(e))
+        else:
+            
     #===========================================================================
     # Run Server
     #===========================================================================
-    WSGIServer((ip, port),
-               application=__pygics_wsgi_application__,
-               log=PYGICS.MNG.PLOG,
-               error_log=PYGICS.MNG.PLOG).serve_forever()
+            WSGIServer((ip, port),
+                       application=__pygics_wsgi_application__,
+                       log=ENV.LOG.PYGICS,
+                       error_log=ENV.LOG.PYGICS).serve_forever()
     
