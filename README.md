@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.6
+version : 0.5.7
 
-last change : bug fix content type 
+last change : bug fix pygics static rest 
 
 ## What is Pygics?
 

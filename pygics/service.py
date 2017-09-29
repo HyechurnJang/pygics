@@ -481,11 +481,11 @@ def server(ip,
     #===========================================================================
     # Management Admin Rest APIs
     #===========================================================================
-    @api('GET', '/module')
+    @api('GET', 'module')
     def get_module(req):
         return {'prio' : ENV.MOD.PRIO, 'desc' : ENV.MOD.DESC}
     
-    @api('POST', '/module')
+    @api('POST', 'module')
     def upload_module(req, name):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         raw_file = '%s/%s.raw' % (ENV.DIR.MOD, name)
@@ -493,13 +493,13 @@ def server(ip,
         __install_module__(raw_file)
         return {'result': 'success'}
             
-    @api('DELETE', '/module')
+    @api('DELETE', 'module')
     def delete_module(req, name):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         __uninstall_module__(name)
         return {'result': 'success'}
     
-    @api('GET', '/repo')
+    @api('GET', 'repo')
     def get_repo(req):
         app, exp = Burst().register(
             requests.get, 'https://api.github.com/users/pygics-app/repos').register(
@@ -515,7 +515,7 @@ def server(ip,
                 result['exp'].append({'name' : repo['name'], 'description' : repo['description']})
         return result
     
-    @api('POST', '/repo')
+    @api('POST', 'repo')
     def install_repo(req, repo, name, branch='master'):
         if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         if repo not in ['app', 'exp']: raise Exception('incorrect repository name')
