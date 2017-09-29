@@ -2,7 +2,7 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.7
+version : 0.5.8
 
 last change : bug fix pygics static rest 
 

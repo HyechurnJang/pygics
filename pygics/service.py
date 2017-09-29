@@ -487,7 +487,7 @@ def server(ip,
     
     @api('POST', 'module')
     def upload_module(req, name):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
+        if 'PYGICS_UUID' not in req.headers or req.headers['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         raw_file = '%s/%s.raw' % (ENV.DIR.MOD, name)
         with open(raw_file, 'wb') as fd: fd.write(req.data)
         __install_module__(raw_file)
@@ -495,7 +495,7 @@ def server(ip,
             
     @api('DELETE', 'module')
     def delete_module(req, name):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
+        if 'PYGICS_UUID' not in req.headers or req.headers['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         __uninstall_module__(name)
         return {'result': 'success'}
     
@@ -517,7 +517,7 @@ def server(ip,
     
     @api('POST', 'repo')
     def install_repo(req, repo, name, branch='master'):
-        if 'PYGICS_UUID' not in req.header or req.header['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
+        if 'PYGICS_UUID' not in req.headers or req.headers['PYGICS_UUID'] != ENV.UUID: raise Exception('incorrect uuid')
         if repo not in ['app', 'exp']: raise Exception('incorrect repository name')
         __install_module__('%s::%s::%s' % (repo, name, branch))
         return {'result': 'success'}
