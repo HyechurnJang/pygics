@@ -532,13 +532,13 @@ def server(ip,
     #===========================================================================
     # Load Modules
     #===========================================================================
-    for module in modules: __install_module__(module)
     try:
         with open(ENV.DIR.SVC + '/modules.json', 'r') as fd: upload_modules = json.loads(fd.read())
     except Exception as e:
         ENV.LOG.MODULE.exception(str(e))
     else:
         try:
+            for module in modules: __install_module__(module)
             for name in upload_modules['prio']:
                 __install_module__(upload_modules['desc'][name]['path'])
         except Exception as e:
