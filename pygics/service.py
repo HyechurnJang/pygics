@@ -371,7 +371,9 @@ def __install_module__(path):
                 mod_path = '%s/%s' % (ENV.DIR.MOD, name)
                 mod_init = '%s/__init__.py' % mod_path
                 deps = []
-                if not os.path.exists(mod_path): os.mkdir(mod_path)
+                if name in ENV.MOD.PRIO: __unlink_module__(name)
+                __remove_module_file__(name)
+                os.mkdir(mod_path)
                 shutil.move(path, mod_init)
                 __link_module__(ENV.DIR.MOD, name)
             else: raise Exception('could not install %s' % path)

@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.8
+version : 0.5.9
 
-last change : bug fix pygics static rest 
+last change : bug fix pygics raw file upload 
 
 ## What is Pygics?
 
