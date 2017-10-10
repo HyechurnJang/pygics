@@ -2,7 +2,7 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.9
+version : 0.5.10
 
 last change : bug fix pygics raw file upload 
 

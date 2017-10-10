@@ -351,7 +351,6 @@ def __install_module__(path):
         if not os.path.exists(path): raise Exception('incorrect module path %s' % path)
         parent, name = os.path.split(path)
         name, ext = os.path.splitext(name)
-        if name in ENV.MOD.PRIO: return
         if zipfile.is_zipfile(path):
             mod_path = '%s/%s' % (ENV.DIR.MOD, name)
             if name in ENV.MOD.PRIO: __unlink_module__(name)
@@ -361,10 +360,12 @@ def __install_module__(path):
             deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
         elif os.path.isdir(path):
+            if name in ENV.MOD.PRIO: return
             deps = __install_dependency__(path)
             __link_module__(parent, name)
         elif os.path.isfile(path):
             if ext == '.py':
+                if name in ENV.MOD.PRIO: return
                 deps = []
                 __link_module__(parent, name)
             elif ext == '.raw':
