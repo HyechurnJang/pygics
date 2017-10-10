@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.5.15
+version : 0.6.0
 
-last change : bug fix pygics raw file upload 
+last change : add none return type 
 
 ## What is Pygics?
 

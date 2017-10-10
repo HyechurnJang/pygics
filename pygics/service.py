@@ -416,7 +416,11 @@ def api(method, url, **plugins):
                     content_type = ContentType.getType(fd.name)
                     data = fd.read()
                     fd.close()
-                if not content_type: content_type = ContentType.AppStream
+                elif not data:
+                    data = ''
+                    content_type = ContentType.TextPlain
+                else:
+                    content_type = ContentType.AppStream
             # Exception Processing
             except Response.__HTTP__ as e:
                 res(e.status, e.headers)
