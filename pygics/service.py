@@ -359,6 +359,7 @@ def __install_module__(path):
             os.remove(path)
             deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
+            path = mod_path
         elif os.path.isdir(path):
             if name in ENV.MOD.PRIO: return
             deps = __install_dependency__(path)
@@ -377,6 +378,7 @@ def __install_module__(path):
                 os.mkdir(mod_path)
                 shutil.move(path, mod_init)
                 __link_module__(ENV.DIR.MOD, name)
+                path = mod_path
             else: raise Exception('could not install %s' % path)
         else: raise Exception('could not install %s' % path)
         if name not in ENV.MOD.PRIO: ENV.MOD.PRIO.append(name)
