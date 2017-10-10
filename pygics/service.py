@@ -377,9 +377,10 @@ def __install_module__(path):
                 __link_module__(ENV.DIR.MOD, name)
             else: raise Exception('could not install %s' % path)
         else: raise Exception('could not install %s' % path)
-        ENV.MOD.DESC[name] = {'path' : path, 'base' : 'local module', 'name' : name, 'dist' : None, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
-        ENV.MOD.PRIO.append(name)
-        ENV.MOD.save()
+        if name not in ENV.MOD.PRIO:
+            ENV.MOD.DESC[name] = {'path' : path, 'base' : 'local module', 'name' : name, 'dist' : None, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
+            ENV.MOD.PRIO.append(name)
+            ENV.MOD.save()
         print('module %s is installed' % path)
 
 def api(method, url, **plugins):
