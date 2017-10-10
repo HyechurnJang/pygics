@@ -360,12 +360,10 @@ def __install_module__(path):
             deps = __install_dependency__(mod_path)
             __link_module__(ENV.DIR.MOD, name)
         elif os.path.isdir(path):
-            if name in ENV.MOD.PRIO: return
             deps = __install_dependency__(path)
             __link_module__(parent, name)
         elif os.path.isfile(path):
             if ext == '.py':
-                if name in ENV.MOD.PRIO: return
                 deps = []
                 __link_module__(parent, name)
             elif ext == '.raw':
