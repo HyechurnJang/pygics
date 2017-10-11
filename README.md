@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.6.0
+version : 0.6.1
 
-last change : add none return type 
+last change : add task idle & service interrupt 
 
 ## What is Pygics?
 

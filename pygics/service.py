@@ -552,8 +552,12 @@ def server(ip,
     #===========================================================================
     # Run Server
     #===========================================================================
-            WSGIServer((ip, port),
-                       application=__pygics_wsgi_application__,
-                       log=ENV.LOG.PYGICS,
-                       error_log=ENV.LOG.PYGICS).serve_forever()
+    
+            try:
+                WSGIServer((ip, port),
+                           application=__pygics_wsgi_application__,
+                           log=ENV.LOG.PYGICS,
+                           error_log=ENV.LOG.PYGICS).serve_forever()
+            except (KeyboardInterrupt, SystemExit): print('pygics interrupted')
+            except: raise
     

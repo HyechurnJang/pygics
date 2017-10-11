@@ -28,3 +28,5 @@ pygics.Time.sleep(5)
 
 t1.stop()
 print 'Stop : t1'
+
+pygics.Task.idle()

@@ -36,6 +36,15 @@ class Task(__PYGICS__):
     @classmethod
     def yielding(cls): gevent.sleep(0)
     
+    @classmethod
+    def idle(cls):
+        class IdleTask(Task):
+            def __init__(self):
+                Task.__init__(self, tick=31557600)
+                self.start()
+        task = IdleTask()
+        while task.isRun(): Time.sleep(31557600) 
+    
     def __init__(self, tick=0, delay=0, debug=False):
         self._pygics_thread = None
         self._pygics_thread_sw = False
