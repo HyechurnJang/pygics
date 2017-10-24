@@ -5,7 +5,7 @@ def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).rea
 
 setup(
     name='pygics',
-    version='0.6.1',
+    version='0.6.2',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='hyjang@cisco.com',
@@ -13,7 +13,7 @@ setup(
     description='Python Gevent Interface for Corresponding Service',
     long_description=read('README'),
     packages=['pygics'],
-    install_requires=['gevent', 'requests'],
+    install_requires=['jzlib', 'gevent', 'requests'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: Apache Software License',

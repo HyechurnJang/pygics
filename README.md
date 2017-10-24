@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.6.1
+version : 0.6.2
 
-last change : add task idle & service interrupt 
+last change : using jzlib & arrange arch 
 
 ## What is Pygics?
 

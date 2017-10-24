@@ -12,6 +12,7 @@ import json
 import uuid
 import types
 import shutil
+import urllib
 import zipfile
 import inspect
 import requests
@@ -19,9 +20,9 @@ import platform
 import logging
 import logging.handlers
 import gevent.monkey
+from jzlib import modup, moddown
 from mimetypes import MimeTypes
 from gevent.pywsgi import WSGIServer
-from .core import __PYGICS__
 from .task import Burst
 
 gevent.monkey.patch_all()
@@ -144,6 +145,7 @@ class ContentType:
     AppJS = 'application/javascript'
     AppJson = 'application/json'
     AppStream = 'application/octet-stream'
+    AppForm = 'application/x-www-form-urlencoded'
     TextCss = 'text/css'
     TextHtml = 'text/html'
     TextPlain = 'text/plain'
@@ -157,11 +159,15 @@ class ContentType:
     
     @classmethod
     def getType(cls, path):
-        mimetype, encoding = cls.MTOBJ.guess_type(path)
+        mimetype, _ = cls.MTOBJ.guess_type(path)
         if not mimetype: return ContentType.AppStream
         return mimetype
 
 class Request:
+    
+    COOKIE_PARSER = re.compile('(?P<key>[\w\-\.]+)=(?P<val>\S+)', re.UNICODE)
+    QUERY_PARSER = re.compile('(?P<key>[\w\%]+)="?(?P<val>[\w\.\-\:\[\]]*)"?', re.UNICODE)
+    XFORM_PARSER = re.compile('(?P<key>[\w]+)=(?P<val>[\W\w\s]*)', re.UNICODE)
     
     def __init__(self, req):
         self.request = req
@@ -178,22 +184,27 @@ class Request:
         if 'COOKIE' in self.headers:
             cookies = self.headers['COOKIE'].split(';')
             for cookie in cookies:
-                kv = re.match('(?P<key>[\w\-\.]+)=(?P<val>\S+)', cookie)
+                kv = Request.COOKIE_PARSER.match(cookie)
                 if kv: self.cookies[kv.group('key')] = kv.group('val')
         # Query
-        qs = req['QUERY_STRING'].split('&')
-        for q in qs:
-            kv = re.match('(?P<key>[\w\%]+)=("|%22|%27)?(?P<val>[\w\.\-\:]*)("|%22|%27)?', q)
+        query_split = req['QUERY_STRING'].split('&')
+        for query in query_split:
+            kv = Request.QUERY_PARSER.match(urllib.unquote_plus(query).decode('utf-8'))
             if kv:
                 k = kv.group('key')
-                if '%5' in k: k = k.replace('%5B', '[').replace('%5D', ']')
                 self.kargs[k] = kv.group('val')
         # Data
         if self.method in ['POST', 'PUT']:
             raw_data = req['wsgi.input'].read()
-            if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE']
+            if 'CONTENT_TYPE' in req: content_type = req['CONTENT_TYPE'].lower()
             else: content_type = ContentType.TextPlain
             if ContentType.AppJson in content_type: self.data = json.loads(raw_data)
+            elif ContentType.AppForm in content_type:
+                self.data = {}
+                data_split = raw_data.split('&')
+                for data in data_split:
+                    kv = Request.XFORM_PARSER.match(urllib.unquote_plus(data).decode('utf-8'))
+                    if kv: self.data[kv.group('key')] = kv.group('val')
             else: self.data = raw_data
         else: self.data = None
         # Mapping
@@ -266,15 +277,10 @@ def __unlink_module__(name):
     if name in ENV.API:
         ENV.API.pop(name)
         ENV.LOG.MODULE.info('delete api /%s/*' % name)
-    if name in sys.modules:
-        mod = sys.modules.pop(name)
-        for _, val in mod.__dict__.items():
-            if isinstance(val, __PYGICS__): val.__pygics_inspect_release__()
-        del mod
+    moddown(name)
 
-def __link_module__(path, name):
-    if path != '' and path not in sys.path: sys.path.insert(0, path)
-    __import__(name)
+def __link_module__(path):
+    modup(path)
 
 def __install_dependency__(path):
     path = path + '/dependency.txt'
@@ -326,7 +332,7 @@ def __install_module__(path):
         mod_path = '%s/%s' % (ENV.DIR.MOD, name)
         if os.path.exists(mod_path) and os.path.isdir(mod_path):
             deps = __install_dependency__(mod_path)
-            __link_module__(ENV.DIR.MOD, name)
+            __link_module__(mod_path)
         else:
             gzip_path = '%s.zip' % mod_path
             uzip_path = '%s/%s-%s' % (mod_path, name, branch)
@@ -342,7 +348,7 @@ def __install_module__(path):
             shutil.rmtree(mod_path)
             os.rename(move_path, mod_path)
             deps = __install_dependency__(mod_path)
-            __link_module__(ENV.DIR.MOD, name)
+            __link_module__(mod_path)
         ENV.MOD.DESC[name] = {'path' : path, 'base' : repo, 'name' : name, 'dist' : branch, 'deps' : deps, 'time' : time.strftime('%Y-%m-%d %X', time.localtime())}
         ENV.MOD.PRIO.append(name)
         ENV.MOD.save()
@@ -358,17 +364,17 @@ def __install_module__(path):
             with zipfile.ZipFile(path, 'r') as fd: fd.extractall(mod_path)
             os.remove(path)
             deps = __install_dependency__(mod_path)
-            __link_module__(ENV.DIR.MOD, name)
+            __link_module__(mod_path)
             path = mod_path
         elif os.path.isdir(path):
             if name in ENV.MOD.PRIO: return
             deps = __install_dependency__(path)
-            __link_module__(parent, name)
+            __link_module__(path)
         elif os.path.isfile(path):
             if ext == '.py':
                 if name in ENV.MOD.PRIO: return
                 deps = []
-                __link_module__(parent, name)
+                __link_module__('%s/%s' % (parent, name))
             elif ext == '.raw':
                 mod_path = '%s/%s' % (ENV.DIR.MOD, name)
                 mod_init = '%s/__init__.py' % mod_path
@@ -377,7 +383,7 @@ def __install_module__(path):
                 __remove_module_file__(name)
                 os.mkdir(mod_path)
                 shutil.move(path, mod_init)
-                __link_module__(ENV.DIR.MOD, name)
+                __link_module__(mod_path)
                 path = mod_path
             else: raise Exception('could not install %s' % path)
         else: raise Exception('could not install %s' % path)
