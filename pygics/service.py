@@ -322,7 +322,7 @@ def __install_module__(path):
     elif re.search('^pip::', path):
         if os.system('pip install -q %s' % path.replace('pip::', '')) != 0: raise Exception('could not install %s' % path)
         print('package %s is installed' % path)
-    elif re.search('^app::', path) or re.search('^exp::', path):
+    elif re.search('^(mod|app|exp)::', path):
         repo_desc = path.split('::')
         repo = repo_desc[0]
         name = repo_desc[1]
@@ -336,8 +336,9 @@ def __install_module__(path):
             gzip_path = '%s.zip' % mod_path
             uzip_path = '%s/%s-%s' % (mod_path, name, branch)
             move_path = '%s/%s-%s' % (ENV.DIR.MOD, name, branch)
-            if repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
-            elif repo == 'exp': resp = requests.get('https://github.com/pygics-app-exp/%s/archive/%s.zip' % (name, branch))
+            if repo == 'mod': resp = requests.get('https://github.com/pygics-mod/%s/archive/%s.zip' % (name, branch))
+            elif repo == 'app': resp = requests.get('https://github.com/pygics-app/%s/archive/%s.zip' % (name, branch))
+            elif repo == 'exp': resp = requests.get('https://github.com/pygics-exp/%s/archive/%s.zip' % (name, branch))
             else: raise Exception('incorrect repository name %s' % repo)
             if resp.status_code != 200: raise Exception('could not find %s' % path)
             with open(gzip_path, 'wb') as fd: fd.write(resp.content)

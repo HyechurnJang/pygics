@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.6.2
+version : 0.6.3
 
-last change : using jzlib & arrange arch 
+last change : fix repository address
 
 ## What is Pygics?
 
