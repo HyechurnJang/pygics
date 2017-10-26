@@ -19,13 +19,10 @@ import requests
 import platform
 import logging
 import logging.handlers
-import gevent.monkey
 from jzlib import modup, moddown
 from mimetypes import MimeTypes
 from gevent.pywsgi import WSGIServer
 from .task import Burst
-
-gevent.monkey.patch_all()
 
 class ENV:
     
@@ -214,8 +211,10 @@ class Request:
             if rn in ref: ref = ref[rn]
             elif '__methods__' in ref and self.method in ref['__methods__']: break
             else: raise Response.NotFound()
+        if '__methods__' not in ref: raise Response.NotFound()
         self.api = ref['__methods__'][self.method]
         self.url = ref['__api_url__']
+        self.content_type = ref['__content_type__']
         if self.path == self.url: self.args = []
         else: self.args = filter(None, re.sub(self.url, '', self.path, 1).split('/'))
     
@@ -392,7 +391,7 @@ def __install_module__(path):
         ENV.MOD.save()
         print('module %s is installed' % path)
 
-def api(method, url, **plugins):
+def api(method, url, content_type=None, **plugins):
     def api_wrapper(func):
         modules = []
         for name, option in plugins.items():
@@ -411,22 +410,22 @@ def api(method, url, **plugins):
                 # Deciding Content Type
                 if isinstance(data, dict) or isinstance(data, list):
                     data = json.dumps(data)
-                    content_type = ContentType.AppJson
+                    content_type = ContentType.AppJson if req.content_type == None else req.content_type
                 elif isinstance(data, str) or isinstance(data, unicode):
-                    content_type = ContentType.TextPlain
+                    content_type = ContentType.TextPlain if req.content_type == None else req.content_type
                 elif isinstance(data, int) or isinstance(data, float):
                     data = str(data)
-                    content_type = ContentType.TextPlain
+                    content_type = ContentType.TextPlain if req.content_type == None else req.content_type
                 elif isinstance(data, types.FileType):
                     fd = data
-                    content_type = ContentType.getType(fd.name)
+                    content_type = ContentType.getType(fd.name) if req.content_type == None else req.content_type
                     data = fd.read()
                     fd.close()
                 elif not data:
                     data = ''
-                    content_type = ContentType.TextPlain
+                    content_type = ContentType.TextPlain if req.content_type == None else req.content_type
                 else:
-                    content_type = ContentType.AppStream
+                    content_type = ContentType.AppStream if req.content_type == None else req.content_type
             # Exception Processing
             except Response.__HTTP__ as e:
                 res(e.status, e.headers)
@@ -464,6 +463,7 @@ def api(method, url, **plugins):
         if '__methods__' not in ref: ref['__methods__'] = {}
         ref['__methods__'][method_upper] = decofunc
         ref['__api_url__'] = dn
+        ref['__content_type__'] = content_type
         print('register api <%s:%s> link to <%s.%s>' % (method_upper, dn, module_name, func_name))
         return decofunc
     
