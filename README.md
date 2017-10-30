@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.6.3
+version : 0.7.0
 
-last change : fix repository address
+last change : api to export and add rest decorator
 
 ## What is Pygics?
 

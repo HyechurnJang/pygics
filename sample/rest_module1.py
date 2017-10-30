@@ -26,7 +26,7 @@ task = ModuleTask()
 # REST FUNCTION
 #===============================================================================
 # GET:<HOST>/<MODULE NAME>/function ----> 200 OK >> {"result" : "ok"}
-@pygics.api('GET', '/function')
+@pygics.rest('GET', '/function')
 def module_function(req, *args, **kargs):
     return 'ok'
 

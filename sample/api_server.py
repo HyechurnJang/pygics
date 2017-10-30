@@ -10,7 +10,7 @@ import pygics
 # GET WITH ROOT URL
 #===============================================================================
 # GET:<HOST> ----> 200 OK >> {"result" : "ok"}
-@pygics.api('GET', '/')
+@pygics.rest('GET', '/')
 def get_type_1(req):
     return 'ok'
 
@@ -18,7 +18,7 @@ def get_type_1(req):
 # GET WITH PATH
 #===============================================================================
 # GET:<HOST>/get_with_path ----> 200 OK >> {"result" : "ok"}
-@pygics.api('GET', '/get_with_path')
+@pygics.rest('GET', '/get_with_path')
 def get_type_2(req):
     return 'ok'
 
@@ -34,7 +34,7 @@ def get_type_2(req):
 # GET:<HOST>/get_with_args?arg1=val1&arg2=val2 ----> arg1="val1", arg2="val2" >> 200 OK >> {"result" : "ok"}
 # GET:<HOST>/get_with_args?arg2=val2&arg1=val1 ----> arg1="val1", arg2="val2" >> 200 OK >> {"result" : "ok"}
 # GET:<HOST>/get_with_args?arg1=val1&arg2=val2&arg3=val3 ----> 400 Bad Request : {"error" : <ERROR_MESSAGE>}
-@pygics.api('GET', '/get_with_args')
+@pygics.rest('GET', '/get_with_args')
 def get_type_3(req, arg1, arg2=None):
     return 'ok'
 
@@ -44,7 +44,7 @@ def get_type_3(req, arg1, arg2=None):
 # GET:<HOST>/get_with_args ----> 200 OK >> {"result" : "ok"}
 # GET:<HOST>/get_with_args/1/2/N ----> 200 OK >> {"result" : "ok"}
 # GET:<HOST>/get_with_args?a=1&b=2&N=N ----> 200 OK >> {"result" : "ok"}
-@pygics.api('GET', '/get_with_anys')
+@pygics.rest('GET', '/get_with_anys')
 def get_type_4(req, *args, **kwargs):
     return 'ok'
 
@@ -55,7 +55,7 @@ def get_type_4(req, *args, **kwargs):
 # post arguments do work same as get
 # support content type : "application/json", "text/plain"
 # post content is saved in "req.data"
-@pygics.api('POST', '/post_action')
+@pygics.rest('POST', '/post_action')
 def post(req):
     return 'ok'
 
@@ -66,7 +66,7 @@ def post(req):
 # put arguments do work same as get
 # support content type : "application/json", "text/plain"
 # put content is saved in "req.data"
-@pygics.api('PUT', '/put_action')
+@pygics.rest('PUT', '/put_action')
 def put(req):
     return 'ok'
 
@@ -75,7 +75,7 @@ def put(req):
 #===============================================================================
 # DELETE:<HOST>/delete_action ----> 200 OK >> {"result" : "ok"}
 # delete arguments do work same as get
-@pygics.api('DELETE', '/delete_action')
+@pygics.rest('DELETE', '/delete_action')
 def delete(req):
     return 'ok'
 
@@ -83,12 +83,12 @@ def delete(req):
 # SAMPLE REST
 #===============================================================================
 # GET:<HOST>/sum?a=10&b=20 ----> 200 OK >> {"result" : 30}
-@pygics.api('GET', '/sum')
+@pygics.rest('GET', '/sum')
 def sum(req, a, b):
     return int(a) + int(b)
 
 # GET:<HOST>/mul?a=10&b=20 ----> 200 OK >> {"result" : 200}
-@pygics.api('GET', '/mul')
+@pygics.rest('GET', '/mul')
 def mul(req, a, b):
     return int(a) * int(b)
 
