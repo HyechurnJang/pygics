@@ -1,25 +1,31 @@
-import os
+# -*- coding: utf-8 -*-
+'''
+Created on 2018. 9. 19.
+@author: Hyechurn Jang, <hyjang@cisco.com>
+'''
+
 from setuptools import setup
 
-def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
+with open("README.md", "r") as fd: long_description = fd.read()
 setup(
     name='pygics',
-    version='0.7.0',
+    version='0.8.0',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='hyjang@cisco.com',
     url='https://github.com/HyechurnJang/pygics',
-    description='Python Gevent Interface for Corresponding Service',
-    long_description=read('README'),
+    description='Python Gevent Interface for Communication Service',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=['pygics'],
     install_requires=['jzlib', 'gevent', 'requests'],
     classifiers=[
-        'Development Status :: 4 - Beta',
         'License :: OSI Approved :: Apache Software License',
-        'Intended Audience :: Developers',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
     ],
 )
+
+# python sdist bdist_wheel
+# twine upload dist/*

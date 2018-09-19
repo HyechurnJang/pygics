@@ -2,7 +2,7 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.7.0
+version : 0.8.0
 
 last change : api to export and add rest decorator
 
