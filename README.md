@@ -8,7 +8,7 @@ last change : api to export and add rest decorator
 
 ## What is Pygics?
 
-<p align="center"><img src="./doc/pygics_logo.png"></p>
+<p align="center"><img src="./doc/pygics_logo_new.png"></p>
 
 Gevent which is event-based processing is good for using CPU performance with efficient.<br/>
 But it have to make code optimization and use specific APIs for your code.<br/>
