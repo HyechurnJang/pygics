@@ -1,26 +1,26 @@
+# -*- coding: utf-8 -*-
 '''
-Created on 2017. 1. 24.
-
-@author: Hye-Churn Jang
+Created on 2018. 9. 20.
+@author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
 import gevent.lock
 import gevent.queue
-from jzlib import LifeCycle, kill
+from jzlib import Mortal, kill
 from .task_impl import TaskImpl, BurstImpl
 
 def sleep(sec): gevent.sleep(sec)
 
-def ctxchange(): gevent.sleep(0)
+def repose(): gevent.sleep(0)
     
-class Queue(LifeCycle, gevent.queue.Queue):
+class Queue(Mortal, gevent.queue.Queue):
     
     #===========================================================================
     # Life Cycle Methods
     #===========================================================================
     def __init__(self, *argv, **kargs): gevent.queue.Queue.__init__(self, *argv, **kargs)
     
-    def __release__(self):
+    def __dead__(self):
         while not self.empty(): kill(self.get())
     
     #===========================================================================
@@ -30,14 +30,14 @@ class Queue(LifeCycle, gevent.queue.Queue):
     
     def get(self, block=True, timeout=None): return gevent.queue.Queue.get(self, block=block, timeout=timeout)
 
-class Lock(LifeCycle, gevent.lock.Semaphore):
+class Lock(Mortal, gevent.lock.Semaphore):
     
     #===========================================================================
     # Life Cycle Methods
     #===========================================================================
     def __init__(self, *argv, **kargs): gevent.lock.Semaphore.__init__(self, *argv, **kargs)
     
-    def __release__(self): self.off()
+    def __dead__(self): self.off()
     
     #===========================================================================
     # Operation Methods
@@ -46,14 +46,14 @@ class Lock(LifeCycle, gevent.lock.Semaphore):
     
     def off(self): return True if gevent.lock.Semaphore.release(self) > 0 else False
         
-class Task(LifeCycle, TaskImpl):
+class Task(Mortal, TaskImpl):
     
     #===========================================================================
     # Life Cycle Methods
     #===========================================================================
     def __init__(self, tick=0, delay=0, debug=False): TaskImpl.__init__(self, tick, delay, debug)
     
-    def __release__(self): TaskImpl.stop(self)
+    def __dead__(self): TaskImpl.stop(self)
     
     #===========================================================================
     # Implementations
@@ -78,14 +78,14 @@ class Task(LifeCycle, TaskImpl):
 #===============================================================================
 # Concurrent Tasking
 #===============================================================================
-class Burst(LifeCycle, BurstImpl):
+class Burst(Mortal, BurstImpl):
     
     #===========================================================================
     # Life Cycle Methods
     #===========================================================================
     def __init__(self, debug=False): BurstImpl.__init__(self, debug)
     
-    def __release__(self): BurstImpl.kill(self)
+    def __dead__(self): BurstImpl.kill(self)
     
     #===========================================================================
     # Operation Methods

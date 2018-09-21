@@ -1,13 +1,13 @@
+# -*- coding: utf-8 -*-
 '''
-Created on 2017. 2. 28.
-
-@author: Hye-Churn Jang
+Created on 2018. 9. 20.
+@author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
-from jzlib import Inventory, LifeCycle
+from jzlib import Inventory, Mortal
 from .session_impl import RestImpl
 
-class Rest(LifeCycle, Inventory, RestImpl):
+class Rest(Mortal, Inventory, RestImpl):
     
     #===========================================================================
     # Life Cycle Methods
@@ -22,7 +22,7 @@ class Rest(LifeCycle, Inventory, RestImpl):
         RestImpl.__init__(self, url, usr, pwd, conns, max_conns, retry, refresh_sec, debug)
         Inventory.__init__(self)
     
-    def __release__(self): RestImpl.close(self)
+    def __dead__(self): RestImpl.close(self)
     
     #===========================================================================
     # Implementations 

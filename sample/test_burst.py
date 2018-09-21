@@ -15,4 +15,4 @@ def getMul(a, b):
     sleep(2)
     return a * b
 
-print Burst().register(getSum, 1, 1).register(getMul, 1, 1).do()
+print(Burst().register(getSum, 1, 1).register(getMul, 1, 1).do())

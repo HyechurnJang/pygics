@@ -4,9 +4,10 @@ Created on 2018. 9. 19.
 @author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
+import os
 from setuptools import setup
 
-with open("README.md", "r") as fd: long_description = fd.read()
+def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).read()
 setup(
     name='pygics',
     version='0.8.0',
@@ -15,7 +16,7 @@ setup(
     author_email='hyjang@cisco.com',
     url='https://github.com/HyechurnJang/pygics',
     description='Python Gevent Interface for Communication Service',
-    long_description=long_description,
+    long_description=read('README'),
     long_description_content_type="text/markdown",
     packages=['pygics'],
     install_requires=['jzlib', 'gevent', 'requests'],

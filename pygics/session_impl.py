@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2017. 10. 19.
-@author: HyechurnJang
+Created on 2018. 9. 20.
+@author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
 import requests
@@ -60,7 +60,7 @@ class RestImpl:
         self.max_conns = max_conns
         self.retry = retry
         self.refresh_sec = refresh_sec
-        self.debug = debug
+        self._pygics_rest_debug = debug
         self._pygics_rest_refresh_work = None
         self._pygics_rest_lock_refresh = Lock()
         self._pygics_rest_lock_message = Lock()
@@ -106,7 +106,7 @@ class RestImpl:
             except RestImpl.ExceptMessage as e: raise e
             except: self.refresh()
         
-        if self.debug:
+        if self._pygics_rest_debug:
             if data != None: print('%s:%s>>%d\n%s\n%s\n%s' % (method, url, resp.status_code, context, data, resp.text))
             else: print('%s:%s>>%d\n%s\n%s' % (method, url, resp.status_code, context, resp.text))
         return resp
@@ -114,19 +114,19 @@ class RestImpl:
     def refresh(self):
         if self._pygics_rest_lock_refresh.on(block=False):
             self._pygics_rest_lock_message.on()
-            if self.debug: print('[Info]Rest:Refresh:%s' % self.url)
+            if self._pygics_rest_debug: print('[Info]Rest:Refresh:%s' % self.url)
             try: self.token = self.__refresh__(self.session)
             except Exception as e:
-                if self.debug: print('[Error]Rest:Refresh:%s>>%s' % (self.url, str(e)))
+                if self._pygics_rest_debug: print('[Error]Rest:Refresh:%s>>%s' % (self.url, str(e)))
                 try:
                     self.__init_session__()
                     self.token = self.__login__(self.session)
                 except Exception as e:
-                    if self.debug: print('[Error]Rest:Refresh:%s>>' % (self.url, str(e)))
+                    if self._pygics_rest_debug: print('[Error]Rest:Refresh:%s>>' % (self.url, str(e)))
                     self._pygics_rest_lock_message.off()
                     self._pygics_rest_lock_refresh.off()
                     raise RestImpl.ExceptSession(self, e)
-            if self.debug: print('[Info]RestAPI:RefreshUpdated:%s' % self.url)
+            if self._pygics_rest_debug: print('[Info]RestAPI:RefreshUpdated:%s' % self.url)
             self._pygics_rest_lock_message.off()
             self._pygics_rest_lock_refresh.off()
         
