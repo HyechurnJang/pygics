@@ -252,7 +252,7 @@ class Response:
 class PlugIn:
     
     def __prev__(self, req, res): pass
-    def __post__(self, req, res, data): return data
+    def __post__(self, req, res, ret): return ret
 
 def environment(root=None):
     if 'ENV' in __builtins__: return
