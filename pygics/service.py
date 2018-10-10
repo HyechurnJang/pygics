@@ -277,8 +277,12 @@ class PlugIn:
 
 def environment(root=None):
     if 'ENV' in __builtins__: return
-    if root: __ENV__.DIR.ROOT = root
-    else: __ENV__.DIR.ROOT = os.path.split(os.path.abspath(inspect.getmodule(inspect.stack()[1][0]).__file__))[0]
+    if root:
+        if os.getcwd() != root:
+            if os.path.exists(root) and os.path.isdir(root): os.chdir(root)
+            else: raise Exception('pygics environment root path(%s) is incorrect' % root)
+        __ENV__.DIR.ROOT = root
+    else: __ENV__.DIR.ROOT = os.getcwd()
     __ENV__.DIR.PYGICS = __ENV__.DIR.ROOT + '/__pygics__'
     __ENV__.DIR.RUN = __ENV__.DIR.PYGICS + '/run'
     __ENV__.DIR.MOD = __ENV__.DIR.PYGICS + '/mod'
@@ -321,7 +325,7 @@ def server(ip, port=80, *modules):
     #===========================================================================
     # Initial Setup
     #===========================================================================
-    environment(os.path.split(os.path.abspath(inspect.getmodule(inspect.stack()[1][0]).__file__))[0])
+    environment()
     __ENV__.NET.IP = ip
     __ENV__.NET.PORT = port
      

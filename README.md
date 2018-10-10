@@ -4,7 +4,7 @@
 
 version : 0.8.0
 
-last change : api to export and add rest decorator
+last change : pygics environment and docker build
 
 ## What is Pygics?
 
