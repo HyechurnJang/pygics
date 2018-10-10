@@ -350,11 +350,11 @@ def server(ip, port=80, *modules):
         except Response.__HTTP__ as e:
             __ENV__.LOG.exception(str(e))
             response(e.status, e.headers)
-            return [e.data]
+            return [e.data.encode()]
         except Exception as e:
             __ENV__.LOG.exception(str(e))
             response('400 Bad Request', [('Content-Type', ContentType.AppJson)])
-            return [json.dumps({'error' : str(e)})]
+            return [json.dumps({'error' : str(e)}).encode()]
         result = request.api(request, response)
         if isinstance(result, str): return [result.encode()]
         else: return [result]
