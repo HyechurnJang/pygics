@@ -61,10 +61,30 @@ class __ENV__:
             for rn in rns:
                 if rn not in ref: ref[rn] = {}
                 ref = ref[rn]
-            if '__method__' not in ref: ref['__method__'] = {}
-            ref['__method__'][method] = exporter
-            ref['__export_url__'] = dn
-            ref['__content_type__'] = content_type
+            
+            spec = inspect.getfullargspec(logic)
+            params = spec.args
+            defaults = spec.defaults
+            param_map = {}
+            if defaults:
+                len_defaults = len(defaults)
+                def_params = params[len_defaults:]
+                req_params = params[:len_defaults]
+                for i in range(0, len_defaults):
+                    default = defaults[i]
+                    param_map[def_params[i]] = {'type' : default.__class__.__name__, 'value' : default}
+            else:
+                req_params = params
+            for req_param in req_params[1:]: param_map[req_param] = 'required'
+            
+            if '__export__' not in ref:
+                ref['__export__'] = {}
+                ref['__export_url__'] = dn
+            ref['__export__'][method] = {
+                'func' : exporter,
+                'params' : {'order' : params[1:], 'map' : param_map},
+                'content_type' : content_type,
+            }
             print('register uri <%s:%s> link to <%s.%s(...)>' % (method, dn, module, logic_name))
     
     class MOD:
@@ -181,12 +201,13 @@ class Request:
         
         for rn in rns:
             if rn in ref: ref = ref[rn]
-            elif '__method__' in ref and self.method in ref['__method__']: break
+            elif '__export__' in ref and self.method in ref['__export__']: break
             else: raise Response.NotFound()
-        if '__method__' not in ref: raise Response.NotFound()
-        self.api = ref['__method__'][self.method]
+        if '__export__' not in ref: raise Response.NotFound()
+        api_desc = ref['__export__'][self.method]
+        self.api = api_desc['func']
         self.url = ref['__export_url__']
-        self.content_type = ref['__content_type__']
+        self.content_type = api_desc['content_type']
         if self.path == self.url: self.args = []
         else: self.args = list(filter(None, re.sub(self.url, '', self.path, 1).split('/')))
         
