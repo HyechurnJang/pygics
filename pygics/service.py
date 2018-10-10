@@ -342,13 +342,6 @@ def server(ip, port=80, *modules):
         __ENV__.LOG.exception(str(e))
         exit(1)
     
-    print(__ENV__.UUID)
-    print('SYS::%s,%s,%s' % (__ENV__.SYS.TYPE, __ENV__.SYS.DIST, __ENV__.SYS.VER))
-    print('NET::%s:%d' % (__ENV__.NET.IP, __ENV__.NET.PORT))
-    print('DIR::%s' % __ENV__.DIR.ROOT)
-    print('MOD::%s\n%s' % (__ENV__.MOD.LIST, dumpJson(__ENV__.MOD.DESC)))
-    print('URI::\n%s' % dumpJson(__ENV__.URI.MAP, indent=2))
-             
     #===========================================================================
     # Run Server
     #===========================================================================
