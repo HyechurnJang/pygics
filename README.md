@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.8.3
+version : 0.8.4
 
-last change : register root path to sys path
+last change : add hostname to environment
 
 ## What is Pygics?
 

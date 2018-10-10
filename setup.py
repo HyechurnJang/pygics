@@ -10,7 +10,7 @@ from setuptools import setup
 def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).read()
 setup(
     name='pygics',
-    version='0.8.3',
+    version='0.8.4',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='hyjang@cisco.com',

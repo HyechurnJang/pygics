@@ -9,6 +9,7 @@ import sys
 import uuid
 import json
 import urllib
+import socket
 import inspect
 from mimetypes import MimeTypes
 from gevent.pywsgi import WSGIServer
@@ -20,6 +21,7 @@ from .service_impl import *
 class __ENV__:
     UUID = None
     LOG = None
+    HOSTNAME = None
     
     @classmethod
     def PWD(self):
@@ -275,6 +277,7 @@ class PlugIn:
 
 def environment(root=None):
     if 'ENV' in __builtins__: return
+    __ENV__.HOSTNAME = socket.gethostname()
     if root:
         if os.getcwd() != root:
             if os.path.exists(root) and os.path.isdir(root): os.chdir(root)
@@ -285,9 +288,9 @@ def environment(root=None):
     __ENV__.DIR.PYGICS = __ENV__.DIR.ROOT + '/__pygics__'
     __ENV__.DIR.RUN = __ENV__.DIR.PYGICS + '/run'
     __ENV__.DIR.MOD = __ENV__.DIR.PYGICS + '/mod'
-    __ENV__.DIR._UID_FILE_ = __ENV__.DIR.PYGICS + '/service.uuid'
-    __ENV__.DIR._MOD_FILE_ = __ENV__.DIR.PYGICS + '/modules.json'
-    __ENV__.DIR._LOG_FILE_ = __ENV__.DIR.PYGICS + '/pygics.log'
+    __ENV__.DIR._UID_FILE_ = __ENV__.DIR.PYGICS + '/service.%s.uuid' % __ENV__.HOSTNAME
+    __ENV__.DIR._MOD_FILE_ = __ENV__.DIR.PYGICS + '/modules.%s.json' % __ENV__.HOSTNAME
+    __ENV__.DIR._LOG_FILE_ = __ENV__.DIR.PYGICS + '/pygics.%s.log' % __ENV__.HOSTNAME
     if not os.path.exists(__ENV__.DIR.PYGICS): os.mkdir(__ENV__.DIR.PYGICS)
     if not os.path.exists(__ENV__.DIR.RUN): os.mkdir(__ENV__.DIR.RUN)
     if not os.path.exists(__ENV__.DIR.MOD): os.mkdir(__ENV__.DIR.MOD)
