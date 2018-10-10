@@ -279,7 +279,9 @@ def environment(root=None):
     if 'ENV' in __builtins__: return
     if root:
         if os.getcwd() != root:
-            if os.path.exists(root) and os.path.isdir(root): os.chdir(root)
+            if os.path.exists(root) and os.path.isdir(root):
+                os.chdir(root)
+                if root not in sys.path: sys.path.insert(0, root)
             else: raise Exception('pygics environment root path(%s) is incorrect' % root)
         __ENV__.DIR.ROOT = root
     else: __ENV__.DIR.ROOT = os.getcwd()

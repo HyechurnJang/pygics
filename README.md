@@ -4,7 +4,7 @@
 
 version : 0.8.0
 
-last change : pygics environment and docker build
+last change : register root path to sys path
 
 ## What is Pygics?
 
