@@ -4,9 +4,7 @@ Created on 2018. 9. 20.
 @author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
-import os
 import io
-import re
 import sys
 import uuid
 import json
@@ -16,7 +14,7 @@ from mimetypes import MimeTypes
 from gevent.pywsgi import WSGIServer
 from logging import Logger, StreamHandler, Formatter
 from logging.handlers import TimedRotatingFileHandler
-from jzlib import getPlatform, setGlobals
+from jzlib import getPlatform, setGlobals, dumpJson
 from .service_impl import *
 
 class __ENV__:
@@ -197,7 +195,7 @@ class Request:
              
         # URL Mapping
         rns = list(filter(None, self.path.split('/')))
-        ref = ENV.URI.MAP
+        ref = __ENV__.URI.MAP
         
         for rn in rns:
             if rn in ref: ref = ref[rn]
@@ -279,12 +277,11 @@ def environment(root=None):
     if 'ENV' in __builtins__: return
     if root:
         if os.getcwd() != root:
-            if os.path.exists(root) and os.path.isdir(root):
-                os.chdir(root)
-                if root not in sys.path: sys.path.insert(0, root)
+            if os.path.exists(root) and os.path.isdir(root): os.chdir(root)
             else: raise Exception('pygics environment root path(%s) is incorrect' % root)
         __ENV__.DIR.ROOT = root
     else: __ENV__.DIR.ROOT = os.getcwd()
+    if __ENV__.DIR.ROOT not in sys.path: sys.path.insert(0, __ENV__.DIR.ROOT)
     __ENV__.DIR.PYGICS = __ENV__.DIR.ROOT + '/__pygics__'
     __ENV__.DIR.RUN = __ENV__.DIR.PYGICS + '/run'
     __ENV__.DIR.MOD = __ENV__.DIR.PYGICS + '/mod'
@@ -336,11 +333,18 @@ def server(ip, port=80, *modules):
     #===========================================================================
     
     try:
-        for path in modules: ENV.MOD.install(path)
-        for path in ENV.MOD.getRegistered()['list']: ENV.MOD.install(path)
+        for path in modules: __ENV__.MOD.install(path)
+        for path in __ENV__.MOD.getRegistered()['list']: __ENV__.MOD.install(path)
     except Exception as e:
-        LOG.exception(str(e))
+        __ENV__.LOG.exception(str(e))
         exit(1)
+    
+    print(__ENV__.UUID)
+    print('SYS::%s,%s,%s' % (__ENV__.SYS.TYPE, __ENV__.SYS.DIST, __ENV__.SYS.VER))
+    print('NET::%s:%d' % (__ENV__.NET.IP, __ENV__.NET.PORT))
+    print('DIR::%s' % __ENV__.DIR.ROOT)
+    print('MOD::%s\n%s' % (__ENV__.MOD.LIST, dumpJson(__ENV__.MOD.DESC)))
+    print('URI::\n%s' % dumpJson(__ENV__.URI.MAP, indent=2))
              
     #===========================================================================
     # Run Server
@@ -348,11 +352,11 @@ def server(ip, port=80, *modules):
     def __pygics_wsgi_application__(request, response):
         try: request = Request(request)
         except Response.__HTTP__ as e:
-            LOG.exception(str(e))
+            __ENV__.LOG.exception(str(e))
             response(e.status, e.headers)
             return [e.data]
         except Exception as e:
-            LOG.exception(str(e))
+            __ENV__.LOG.exception(str(e))
             response('400 Bad Request', [('Content-Type', ContentType.AppJson)])
             return [json.dumps({'error' : str(e)})]
         result = request.api(request, response)
@@ -362,8 +366,8 @@ def server(ip, port=80, *modules):
     try:
         WSGIServer((ip, port),
                    application=__pygics_wsgi_application__,
-                   log=LOG,
-                   error_log=LOG).serve_forever()
+                   log=__ENV__.LOG,
+                   error_log=__ENV__.LOG).serve_forever()
     except (KeyboardInterrupt, SystemExit): print('pygics interrupted')
     except: raise
  
@@ -400,11 +404,11 @@ def export(method, url, content_type=ContentType.AppStream):
                 res(e.status, e.headers)
                 return e.data
             except TypeError as e:
-                LOG.exception(str(e))
+                __ENV__.LOG.exception(str(e))
                 res('400 Bad Request', [('Content-Type', ContentType.AppJson)])
                 return json.dumps({'error' : str(e)})
             except Exception as e:
-                LOG.exception(str(e))
+                __ENV__.LOG.exception(str(e))
                 res('500 Internal Server Error', [('Content-Type', ContentType.AppJson)])
                 return json.dumps({'error' : str(e)})
             # Build Response
@@ -414,7 +418,7 @@ def export(method, url, content_type=ContentType.AppStream):
             res('200 OK', headers)
             return data
         
-        ENV.URI.register(logic, exporter, method, url, content_type)
+        __ENV__.URI.register(logic, exporter, method, url, content_type)
         return exporter
      
     return wrapper
