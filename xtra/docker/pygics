@@ -8,5 +8,5 @@ Created on 2018. 10. 10.
 import sys
 import pygics
 
-pygics.environment('/pygics')
+pygics.environment('/opt/pygics/workspace')
 pygics.server('0.0.0.0', 80, *sys.argv[1:])
