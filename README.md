@@ -4,7 +4,7 @@
 
 version : 0.8.6
 
-last change : bug fix http error state
+last change : bug fix getfullargspec
 
 ## What is Pygics?
 

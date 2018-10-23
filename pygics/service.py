@@ -62,7 +62,8 @@ class __ENV__:
                 if rn not in ref: ref[rn] = {}
                 ref = ref[rn]
             
-            spec = inspect.getfullargspec(logic)
+            if sys.version_info.major < 3: spec = inspect.getargspec(logic)
+            else: spec = inspect.getfullargspec(logic)
             params = spec.args
             defaults = spec.defaults
             param_map = {}
