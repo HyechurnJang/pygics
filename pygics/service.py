@@ -68,9 +68,11 @@ class __ENV__:
             defaults = spec.defaults
             param_map = {}
             if defaults:
+                len_params = len(params)
                 len_defaults = len(defaults)
-                def_params = params[len_defaults:]
-                req_params = params[:len_defaults]
+                len_index = len_params - len_defaults
+                req_params = params[:len_index]
+                def_params = params[len_index:]
                 for i in range(0, len_defaults):
                     default = defaults[i]
                     param_map[def_params[i]] = {'type' : default.__class__.__name__, 'value' : default}
@@ -193,7 +195,8 @@ class Request:
         query_split = request['QUERY_STRING'].split('&')
         for query in query_split:
             if not query: continue
-            kv = Request.QUERY_PARSER.match(urllib.unquote_plus(query).decode('utf-8'))
+            if sys.version_info.major < 3: kv = Request.QUERY_PARSER.match(urllib.unquote_plus(query).decode('utf-8'))
+            else: kv = Request.QUERY_PARSER.match(urllib.parse.unquote_plus(query))
             if kv: self.kargs[kv.group('key')] = kv.group('val')
              
         # URL Mapping
@@ -222,7 +225,8 @@ class Request:
                 self.data = {}
                 data_split = raw_data.split('&')
                 for data in data_split:
-                    kv = Request.XFORM_PARSER.match(urllib.unquote_plus(data).decode('utf-8'))
+                    if sys.version_info.major < 3: kv = Request.XFORM_PARSER.match(urllib.unquote_plus(data).decode('utf-8'))
+                    else: kv = Request.XFORM_PARSER.match(urllib.parse.unquote_plus(data))
                     if kv: self.data[kv.group('key')] = kv.group('val')
             else: self.data = raw_data
         else: self.data = None

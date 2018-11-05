@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
 
-version : 0.8.6
+version : 0.8.8
 
-last change : bug fix getfullargspec
+last change : python2&3 compatibility
 
 ## What is Pygics?
 
