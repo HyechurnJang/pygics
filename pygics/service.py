@@ -88,7 +88,7 @@ class __ENV__:
                 'params' : {'order' : params[1:], 'map' : param_map},
                 'content_type' : content_type,
             }
-            print('register uri <%s:%s> link to <%s.%s(...)>' % (method, dn, module, logic_name))
+            print('[INFO] register uri <%s:%s> link to <%s.%s(...)>' % (method, dn, module, logic_name))
     
     class MOD:
         LIST = []
@@ -209,8 +209,8 @@ class Request:
             else: raise Response.NotFound()
         if '__export__' not in ref: raise Response.NotFound()
         api_desc = ref['__export__'][self.method]
-        self.api = api_desc['func']
         self.url = ref['__export_url__']
+        self.api = api_desc['func']
         self.content_type = api_desc['content_type']
         if self.path == self.url: self.args = []
         else: self.args = list(filter(None, re.sub(self.url, '', self.path, 1).split('/')))
