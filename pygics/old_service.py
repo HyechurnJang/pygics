@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2018. 9. 19. OLD
+Created on 2018. 9. 19.
 @author: Hyechurn Jang, <hyjang@cisco.com>
 '''
 
