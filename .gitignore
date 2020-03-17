@@ -91,3 +91,4 @@ ENV/
 /.pydevproject
 test/
 .settings/
+.dbeaver/
