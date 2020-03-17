@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2018. 9. 19.
-@author: Hyechurn Jang, <hyjang@cisco.com>
+  ____  ___   ____________  ___  ___  ____     _________________
+ / __ \/ _ | / __/  _/ __/ / _ \/ _ \/ __ \__ / / __/ ___/_  __/
+/ /_/ / __ |_\ \_/ /_\ \  / ___/ , _/ /_/ / // / _// /__  / /   
+\____/_/ |_/___/___/___/ /_/  /_/|_|\____/\___/___/\___/ /_/    
+         Operational Aid Source for Infra-Structure 
+
+Created on 2020. 3. 18..
+@author: Hye-Churn Jang, CMBU Specialist in Korea, VMware [jangh@vmware.com]
 '''
 
 import os
 from setuptools import setup
 
+
 def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+
 setup(
     name='pygics',
     version='1.0.0',
