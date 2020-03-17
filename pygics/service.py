@@ -263,7 +263,7 @@ def rest(method, url):
     return wrapper
 
 
-def server(ip, port=80, modules=[], favicon=None, static=False):
+def server(ip, port, *modules, **configs):
     
     #===========================================================================
     # Init Service
@@ -273,17 +273,19 @@ def server(ip, port=80, modules=[], favicon=None, static=False):
     #===========================================================================
     # Start Web Default Service
     #===========================================================================
+    favicon = configs['favicon'] if 'favicon' in configs else None
+    static = configs['static'] if 'static' in configs else False
+    
     static_path, _ = os.path.split(__file__)
     static_path = static_path + '/static'
     if favicon:
         if not os.path.exists(favicon):
             raise Exception('could not find favicon')
     else:
-        favicon = static_path + '/image/favicon.ico'
 
-    @download('/favicon.ico')
-    def favicon_sender(req, *path, **param):
-        return File(favicon)
+        @download('/favicon.ico')
+        def favicon_sender(req, *path, **param):
+            return File(static_path + '/image/favicon.ico')
     
     if static:
 
@@ -297,7 +299,6 @@ def server(ip, port=80, modules=[], favicon=None, static=False):
     #===========================================================================
     # Init Modules
     #===========================================================================
-    if not isinstance(modules, list): modules = [modules]
     for mod in modules: load(mod)
     
     #===========================================================================

@@ -116,7 +116,7 @@ class Task(PygObj):
         self._pygics_task_delay = delay
     
     def __kill__(self):
-        self.stop(self)
+        self.stop()
     
     #===========================================================================
     # Inner Management
