@@ -12,7 +12,9 @@ Created on 2020. 3. 17..
 
 from pygics import server, load
 
+# import with "load" function
 load('modules.plug_in').introduce('Function Run at Imported Module')
 
 if __name__ == '__main__':
+    # import modules on server
     server('0.0.0.0', 80, 'simple_rest_server', 'modules.about')

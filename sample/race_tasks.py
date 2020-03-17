@@ -12,13 +12,13 @@ Created on 2020. 3. 17..
 
 from pygics import Task, Lock, sleep, repose, kill, logInfo
 
-
 lock = Lock()
+
 
 class SportsCar(Task):
     
     def __init__(self, name, start_sec):
-        Task.__init__(self, tick=1, delay=start_sec)
+        Task.__init__(self, tick=1, delay=start_sec)  # every 1 sec run task
         self.name = name
         self.start()
     
@@ -28,28 +28,32 @@ class SportsCar(Task):
         lock.off()
         repose()
 
+
 class Ferrari(SportsCar):
     
     def __init__(self):
-        SportsCar.__init__(self, 'Ferrari', 0)
+        SportsCar.__init__(self, 'Ferrari', 0)  # start after 0 sec
+
 
 class Lamborghini(SportsCar):
     
     def __init__(self):
-        SportsCar.__init__(self, 'Lamborghini', 2)
+        SportsCar.__init__(self, 'Lamborghini', 2)  # start after 2 sec
+
 
 class Porsche(SportsCar):
     
     def __init__(self):
-        SportsCar.__init__(self, 'Porsche', 4)
+        SportsCar.__init__(self, 'Porsche', 4)  # start after 4 sec
+
 
 f = Ferrari()
 l = Lamborghini()
 p = Porsche()
 
 sleep(6)
-f.stop()
+f.stop()  # stop Ferrari
 sleep(3)
-kill(l)
+kill(l)  # kill Lamborghini
 sleep(3)
-p.stop()
+p.stop()  # stop Porsche

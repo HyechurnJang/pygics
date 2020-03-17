@@ -23,6 +23,7 @@ class OnlyOne:
         logInfo('This is Instance Method')
 
 
+# OnlyOne keyword is Singleton Instance
 OnlyOne.introduce()
 
 
@@ -40,6 +41,7 @@ class Box:
         logInfo("This is {}'s {}".format(self.owner, self.name))
 
 
+# MyCategory.SecretBox keyword is Singleton Instance
 MyCategory.SecretBox.introduce()
 
 

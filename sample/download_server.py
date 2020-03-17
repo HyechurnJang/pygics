@@ -20,7 +20,7 @@ def file_download_from_modules_directory(req, *path):
       - GET /modules/about.py
     '''
     path = '/'.join(path)
-    return File('modules/{}'.format(path))
+    return File('modules/{}'.format(path))  # File Cache with path parameter
 
 
 if __name__ == '__main__':
