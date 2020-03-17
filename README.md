@@ -1,10 +1,10 @@
 # pygics
 
-**PY**thon **G**event **I**nterface for **C**orresponding **S**ervice
+**PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 0.8.8
+version : 1.0.0
 
-last change : python2&3 compatibility
+last change : new launch 1.0.0
 
 ## What is Pygics?
 

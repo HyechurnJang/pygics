@@ -20,9 +20,6 @@ lib64/
 parts/
 sdist/
 var/
-test/
-.settings/
-__pygics__/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -92,3 +89,5 @@ ENV/
 .ropeproject
 /.project
 /.pydevproject
+test/
+.settings/
