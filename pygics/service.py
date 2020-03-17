@@ -266,7 +266,11 @@ class Response:
         def __init__(self, headers=[], data='Unauthorized'):
             headers.append(('WWW-Authenticate', 'Basic realm="pygics"'))
             Response.__ERR__.__init__(self, '401 Unauthorized', headers, data)
-     
+    
+    class Forbidden(__ERR__): #403
+        def __init__(self, headers=[], data='Forbidden'):
+            Response.__ERR__.__init__(self, '403 Forbidden', headers, data)
+    
     class NotFound(__ERR__): #404
         def __init__(self, headers=[], data='not found'):
             Response.__ERR__.__init__(self, '404 Not Found', headers, data)
@@ -274,6 +278,10 @@ class Response:
     class ServerError(__ERR__): #500
         def __init__(self, headers=[], data='internal server error'):
             Response.__ERR__.__init__(self, '500 Internal Server Error', headers, data)
+    
+    class NotImplemented(__ERR__): #501
+        def __init__(self, headers=[], data='not implemented'):
+            Response.__ERR__.__init__(self, '501 Not Implemented', headers, data)
 
 class PlugIn:
     
