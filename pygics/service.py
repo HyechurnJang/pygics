@@ -1,170 +1,96 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2018. 9. 20.
-@author: Hyechurn Jang, <hyjang@cisco.com>
+  ____  ___   ____________  ___  ___  ____     _________________
+ / __ \/ _ | / __/  _/ __/ / _ \/ _ \/ __ \__ / / __/ ___/_  __/
+/ /_/ / __ |_\ \_/ /_\ \  / ___/ , _/ /_/ / // / _// /__  / /   
+\____/_/ |_/___/___/___/ /_/  /_/|_|\____/\___/___/\___/ /_/    
+         Operational Aid Source for Infra-Structure 
+
+Created on 2020. 2. 15.
+@author: Hye-Churn Jang, CMBU Specialist in Korea, VMware [jangh@vmware.com]
 '''
 
+import os
 import io
+import re
 import sys
-import uuid
 import json
 import urllib
-import socket
-import inspect
-from mimetypes import MimeTypes
+import traceback
 from gevent.pywsgi import WSGIServer
-from logging import Logger, StreamHandler, Formatter
-from logging.handlers import TimedRotatingFileHandler
-from jzlib import getPlatform, setGlobals, dumpJson
-from .service_impl import *
+from watchdog_gevent import Observer
+from watchdog.events import FileSystemEventHandler
+from .common import logInfo, logError, load, dumpJson
+from .struct import PygObj, Inventory, singleton
+from .constant import HttpMethodType, HttpContentType, HttpResponseType
 
-class __ENV__:
-    UUID = None
-    LOG = None
-    HOSTNAME = None
+
+def create_service():
+
+    @singleton
+    class Service(Inventory):
+        
+        def __init__(self):
+            Inventory.__init__(self, tracking=False)
+        
+        def register(self, action):
+            ref = self
+            for name in action._pygics_action_path:
+                children = +ref
+                if name in children:
+                    ref = children[name]
+                else:
+                    ref = Inventory(tracking=False).setParent(ref, name)
+            action.setParent(ref, action._pygics_action_method)
+            logInfo('[Pygics Service] Register > URL=%s:%s > Action=%s.%s' % (action._pygics_action_method, action._pygics_action_url, action._pygics_action_module, action._pygics_action_fname))
+        
+        def search(self, request):
+            ref = self
+            for name in request.path:
+                children = +ref
+                if name in children:
+                    ref = children[name]
+                else: break
+            if hasattr(ref, request.method):
+                return (+ref)[request.method]
+            else: HttpResponseType.NotFound()
+
+
+class Action(Inventory):
     
-    @classmethod
-    def PWD(self):
+    def __init__(self, func, method, url):
+        Inventory.__init__(self, tracking=False)
+        self._pygics_action_func = func
+        self._pygics_action_fname = func.__name__
+        self._pygics_action_module = func.__module__
+        self._pygics_action_method = method.upper()
+        if self._pygics_action_method not in HttpMethodType.SupportList:
+            raise Exception('could not register unsupported method %s' % self._pygics_action_method)
+        self._pygics_action_url = url
+        self._pygics_action_path = list(filter(None, url.split('/')))
+    
+    def __wsi__(self, req):
         try:
-            mod = inspect.getmodule(inspect.stack()[1][0])
-            mod_path, _ = os.path.split(os.path.abspath(mod.__file__))
-            return mod_path
-        except: pass
-        return ''
+            content_type, data = self.__run__(req)
+        except HttpResponseType.__ERROR__ as e:
+            return e
+        except TypeError as e:
+            return HttpResponseType.BadRequest(str(e), exception=False)
+        except Exception as e:
+            traceback.print_exc()
+            logError('[Pygics Action] %s.%s > %s' % (self._pygics_action_module, self._pygics_action_fname, str(e)))
+            return HttpResponseType.ServerError(str(e), exception=False)
+        else:
+            headers = [('Content-Type', content_type)]
+            if req.headers_add:
+                for k, v in req.headers_add.items(): headers.append((k, v))
+            if req.cookies_add:
+                for k, v in req.cookies_add.items(): headers.append(('Set-Cookie', '%s=%s' % (k, v)))
+            return HttpResponseType.OK(data, headers)
     
-    @classmethod
-    def PMD(self):
-        for i in [2, 1]:
-            try: mod = inspect.getmodule(inspect.stack()[i][0])
-            except: pass
-            else: break
-        mod_name = mod.__name__
-        mod_path, _ = os.path.split(mod.__file__)
-        return (mod_path, mod_name)
-    
-    class URI:
-        MAP = {}
-        
-        @classmethod
-        def register(cls, logic, exporter, method, url, content_type=None):
-            if hasattr(logic, '__logic__'): logic = logic.__logic__
-            module = logic.__module__
-            logic_name = logic.__name__
-            method = method.upper()
-            if method not in ['GET', 'POST', 'PUT', 'DELETE']: raise Exception('method %s is not incorrect' % method)
-            if url[0] != '/':
-                if module == '__main__': dn = '/' + url
-                else: dn = '/%s/%s' % (module.replace('.', '/'), url)
-            else: dn = url
-            rns = list(filter(None, dn.split('/')))
-            ref = __ENV__.URI.MAP
-            for rn in rns:
-                if rn not in ref: ref[rn] = {}
-                ref = ref[rn]
-            
-            if sys.version_info.major < 3: spec = inspect.getargspec(logic)
-            else: spec = inspect.getfullargspec(logic)
-            params = spec.args
-            defaults = spec.defaults
-            param_map = {}
-            if defaults:
-                len_params = len(params)
-                len_defaults = len(defaults)
-                len_index = len_params - len_defaults
-                req_params = params[:len_index]
-                def_params = params[len_index:]
-                for i in range(0, len_defaults):
-                    default = defaults[i]
-                    param_map[def_params[i]] = {'type' : default.__class__.__name__, 'value' : default}
-            else:
-                req_params = params
-            for req_param in req_params[1:]: param_map[req_param] = 'required'
-            
-            if '__export__' not in ref:
-                ref['__export__'] = {}
-                ref['__export_url__'] = dn
-            ref['__export__'][method] = {
-                'func' : exporter,
-                'params' : {'order' : params[1:], 'map' : param_map},
-                'content_type' : content_type,
-            }
-            print('[INFO] register uri <%s:%s> link to <%s.%s(...)>' % (method, dn, module, logic_name))
-    
-    class MOD:
-        LIST = []
-        DESC = {}
-        
-        @classmethod
-        def install(cls, path):
-            if path in __ENV__.MOD.LIST: return
-            kv = re.match('\s*(?P<module>[\w\.\-\:\/]+)', path)
-            if kv != None: path = kv.group('module')
-            else: return []
-            if re.search('^yum::', path): installYum(path)
-            elif re.search('^apt::', path): installApt(path)
-            elif re.search('^pip::', path): installPip(path)
-            elif re.search('^(mod|app|exp)::', path): installRepo(path)
-            elif re.search('^zip::', path): installZip(path)
-            elif re.search('^dir::', path): installDir(path)
-            elif re.search('^py::', path): installPy(path)
-            else: installPath(path)
-        
-        @classmethod
-        def register(cls, path, type, name, ver):
-            __ENV__.MOD.LIST.append(path)
-            __ENV__.MOD.DESC[path] = {'type' : type, 'name' : name, 'ver' : ver}
-            with open(__ENV__.DIR._MOD_FILE_, 'w') as fd: fd.write(json.dumps({'list' : __ENV__.MOD.LIST, 'desc' : __ENV__.MOD.DESC}))
-        
-        @classmethod
-        def unregister(cls, path):
-            __ENV__.MOD.LIST.pop(path)
-            __ENV__.MOD.DESC.pop(path)
-            with open(__ENV__.DIR._MOD_FILE_, 'w') as fd: fd.write(json.dumps({'list' : __ENV__.MOD.LIST, 'desc' : __ENV__.MOD.DESC}))
-        
-        @classmethod
-        def getRegistered(cls):
-            with open(__ENV__.DIR._MOD_FILE_, 'r') as fd: return json.loads(fd.read())
-    
-    class SYS:
-        TYPE = None
-        DIST = None
-        VER = None
-    
-    class NET:
-        IP = None
-        PORT = None
-    
-    class DIR:
-        ROOT = None
-        PYGICS = None
-        RUN = None
-        MOD = None
-        _UID_FILE_ = None
-        _MOD_FILE_ = None
-        _LOG_FILE_ = None
+    def __run__(self, req): pass
 
-class ContentType:
-     
-    __MTOBJ__ = MimeTypes()
-     
-    AppJS = 'application/javascript'
-    AppJson = 'application/json'
-    AppStream = 'application/octet-stream'
-    AppForm = 'application/x-www-form-urlencoded'
-    TextCss = 'text/css'
-    TextHtml = 'text/html'
-    TextPlain = 'text/plain'
-    ImageJpg = 'image/jpeg'
-    ImagePng = 'image/png'
-    ImageGif = 'image/gif'
-    ImageTiff = 'image/tiff'
-     
-    @classmethod
-    def getType(cls, path):
-        mimetype, _ = cls.__MTOBJ__.guess_type(path)
-        if not mimetype: return ContentType.AppStream
-        return mimetype
- 
+
 class Request:
      
     COOKIE_PARSER = re.compile('(?P<key>[\w\-\.]+)=(?P<val>\S+)', re.UNICODE)
@@ -174,274 +100,232 @@ class Request:
     def __init__(self, request):
         self.request = request
         self.method = request['REQUEST_METHOD']
-        self.path = request['PATH_INFO']
+        self.url = request['PATH_INFO']
+        self.path = list(filter(None, self.url.split('/')))
         self.headers = {}
+        self.headers_add = {}
         self.cookies = {}
-        self.cookies_new = {}
+        self.cookies_add = {}
         self.kargs = {}
+        
+        # Action
+        self.action = Pygics.Service.search(self)
          
         # Headers
         for key in request.keys():
             if 'HTTP_' in key: self.headers[key.replace('HTTP_', '')] = request[key]
-         
+        
         # Cookies
         if 'COOKIE' in self.headers:
             cookies = self.headers['COOKIE'].split(';')
             for cookie in cookies:
                 kv = Request.COOKIE_PARSER.match(cookie)
                 if kv: self.cookies[kv.group('key')] = kv.group('val')
-         
-        # Query
-        query_split = request['QUERY_STRING'].split('&')
-        for query in query_split:
-            if not query: continue
-            if sys.version_info.major < 3: kv = Request.QUERY_PARSER.match(urllib.unquote_plus(query).decode('utf-8'))
-            else: kv = Request.QUERY_PARSER.match(urllib.parse.unquote_plus(query))
-            if kv: self.kargs[kv.group('key')] = kv.group('val')
-             
-        # URL Mapping
-        rns = list(filter(None, self.path.split('/')))
-        ref = __ENV__.URI.MAP
         
-        for rn in rns:
-            if rn in ref: ref = ref[rn]
-            elif '__export__' in ref and self.method in ref['__export__']: break
-            else: raise Response.NotFound()
-        if '__export__' not in ref: raise Response.NotFound()
-        api_desc = ref['__export__'][self.method]
-        self.url = ref['__export_url__']
-        self.api = api_desc['func']
-        self.content_type = api_desc['content_type']
-        if self.path == self.url: self.args = []
-        else: self.args = list(filter(None, re.sub(self.url, '', self.path, 1).split('/')))
+        # Array Parameter
+        self.args = self.path[len(self.action._pygics_action_path):]
+        
+        # Query Parameter
+        for query in request['QUERY_STRING'].split('&'):
+            if not query: continue
+            kv = Request.QUERY_PARSER.match(urllib.parse.unquote_plus(query))
+            if kv: self.kargs[kv.group('key')] = kv.group('val')
         
         # Data
-        if self.method in ['POST', 'PUT']:
+        if self.method in ['POST', 'PUT', 'PATCH']:
             raw_data = request['wsgi.input'].read()
-            if 'CONTENT_TYPE' in request: content_type = request['CONTENT_TYPE'].lower()
-            else: content_type = self.content_type
-            if ContentType.AppJson in content_type: self.data = json.loads(raw_data)
-            elif ContentType.AppForm in content_type:
-                self.data = {}
-                data_split = raw_data.split('&')
-                for data in data_split:
-                    if sys.version_info.major < 3: kv = Request.XFORM_PARSER.match(urllib.unquote_plus(data).decode('utf-8'))
-                    else: kv = Request.XFORM_PARSER.match(urllib.parse.unquote_plus(data))
-                    if kv: self.data[kv.group('key')] = kv.group('val')
+            if 'CONTENT_TYPE' in request:
+                content_type = request['CONTENT_TYPE'].lower()
+                if HttpContentType.AppJson in content_type: self.data = json.loads(raw_data)
+                elif HttpContentType.AppForm in content_type:
+                    self.data = {}
+                    data_split = raw_data.split('&')
+                    for data in data_split:
+                        kv = Request.XFORM_PARSER.match(urllib.parse.unquote_plus(data))
+                        if kv: self.data[kv.group('key')] = kv.group('val')
+                else: self.data = raw_data
             else: self.data = raw_data
         else: self.data = None
      
-    def setCookie(self, key, val): self.cookies_new[key] = val
- 
-class Response:
-     
-    class __HTTP__(Exception):
-         
-        def __init__(self, status, headers, data):
-            Exception.__init__(self)
-            self.status = status
-            self.headers = headers
-            self.data = data
-     
-    class __ERR__(__HTTP__):
-         
-        def __init__(self, status, headers, data):
-            headers.append(('Content-Type', ContentType.AppJson))
-            Response.__HTTP__.__init__(self, status, headers, json.dumps({'error' : data}))
-     
-    class OK(__HTTP__): #200
-        def __init__(self, headers=[], data='ok'):
-            Response.__HTTP__.__init__(self, '200 OK', headers, data)
-             
-    class Redirect(__HTTP__): #302
-        def __init__(self, url, headers=[], data='redirect'):
-            headers.append(('Location', url))
-            Response.__HTTP__.__init__(self, '302 Found', headers, data)
-     
-    class BadRequest(__ERR__): #400
-        def __init__(self, headers=[], data='bad request'):
-            Response.__ERR__.__init__(self, '400 Bad Request', headers, data)
-     
-    class Unauthorized(__ERR__): #401
-        def __init__(self, headers=[], data='Unauthorized'):
-            headers.append(('WWW-Authenticate', 'Basic realm="pygics"'))
-            Response.__ERR__.__init__(self, '401 Unauthorized', headers, data)
+    def setCookie(self, key, val):
+        self.cookies_add[key] = val
     
-    class Forbidden(__ERR__): #403
-        def __init__(self, headers=[], data='Forbidden'):
-            Response.__ERR__.__init__(self, '403 Forbidden', headers, data)
-    
-    class NotFound(__ERR__): #404
-        def __init__(self, headers=[], data='not found'):
-            Response.__ERR__.__init__(self, '404 Not Found', headers, data)
-     
-    class ServerError(__ERR__): #500
-        def __init__(self, headers=[], data='internal server error'):
-            Response.__ERR__.__init__(self, '500 Internal Server Error', headers, data)
-    
-    class NotImplemented(__ERR__): #501
-        def __init__(self, headers=[], data='not implemented'):
-            Response.__ERR__.__init__(self, '501 Not Implemented', headers, data)
+    def setHeader(self, key, val):
+        self.headers_add[key] = val
 
-class PlugIn:
-    
-    def __prev__(self, req, res): pass
-    def __post__(self, req, res, ret): return ret
 
-def environment(root=None):
-    if 'ENV' in __builtins__: return
-    __ENV__.HOSTNAME = socket.gethostname()
-    if root:
-        if os.getcwd() != root:
-            if os.path.exists(root) and os.path.isdir(root): os.chdir(root)
-            else: raise Exception('pygics environment root path(%s) is incorrect' % root)
-        __ENV__.DIR.ROOT = root
-    else: __ENV__.DIR.ROOT = os.getcwd()
-    if __ENV__.DIR.ROOT not in sys.path: sys.path.insert(0, __ENV__.DIR.ROOT)
-    __ENV__.DIR.PYGICS = __ENV__.DIR.ROOT + '/__pygics__'
-    __ENV__.DIR.RUN = __ENV__.DIR.PYGICS + '/run'
-    __ENV__.DIR.MOD = __ENV__.DIR.PYGICS + '/mod'
-    __ENV__.DIR._UID_FILE_ = __ENV__.DIR.PYGICS + '/service.%s.uuid' % __ENV__.HOSTNAME
-    __ENV__.DIR._MOD_FILE_ = __ENV__.DIR.PYGICS + '/modules.%s.json' % __ENV__.HOSTNAME
-    __ENV__.DIR._LOG_FILE_ = __ENV__.DIR.PYGICS + '/pygics.%s.log' % __ENV__.HOSTNAME
-    if not os.path.exists(__ENV__.DIR.PYGICS): os.mkdir(__ENV__.DIR.PYGICS)
-    if not os.path.exists(__ENV__.DIR.RUN): os.mkdir(__ENV__.DIR.RUN)
-    if not os.path.exists(__ENV__.DIR.MOD): os.mkdir(__ENV__.DIR.MOD)
+class File(PygObj):
     
-    __ENV__.SYS.TYPE, __ENV__.SYS.DIST, __ENV__.SYS.VER = getPlatform()
+    def __init__(self, path=None):
+        self.path = path
+        if path:
+            self.is_file = True
+            self.content_type, self.payload = Pygics.FileCache.search(self)
+        else:
+            self.is_file = False
+            self.content_type = HttpContentType.TextPlain
+            self.payload = ''
     
-    if os.path.exists(__ENV__.DIR._UID_FILE_):
-        with open(__ENV__.DIR._UID_FILE_, 'r') as fd: __ENV__.UUID = fd.read()
+    def write(self, text):
+        if not self.is_file:
+            self.payload = self.payload + text
+        return self
+
+
+def download(url):
+    
+    @singleton
+    class FileCache(Inventory, dict):
+        
+        class Watcher(Inventory, Observer):
+            
+            def __init__(self):
+                
+                class FileCacheHandler(FileSystemEventHandler):
+            
+                    def on_modified(self, event):
+                        path = event.src_path
+                        with open(path, 'rb') as fd:
+                            Pygics.FileCache[path] = (HttpContentType.getType(fd.name), fd.read())
+                        logInfo('[Pygics FileCache] Reload > %s' % path)
+                
+                Observer.__init__(self)
+                self._pyg_watcher_handler = FileCacheHandler()
+                self.start()
+            
+            def register(self, path):
+                self.schedule(self._pyg_watcher_handler, path=path)
+        
+        def search(self, file):
+            path = file.path
+            if path and os.path.exists(path) and os.path.isfile(path):
+                path = os.path.realpath(path)
+                if path in self:
+                    return self[path]
+                else:
+                    with open(path, 'rb') as fd:
+                        self[path] = (HttpContentType.getType(fd.name), fd.read())
+                    Pygics.FileCache.Watcher.register(path)
+                    return self[path]
+            else: raise Exception('could not found file %s' % path)
+        
+        def __init__(self):
+            Inventory.__init__(self)
+            dict.__init__(self)
+    
+    class DownloadAction(Action):
+    
+        def __init__(self, func, method, url):
+            Action.__init__(self, func, method, url)
+        
+        def __run__(self, req):
+            data = self._pygics_action_func(req, *req.args, **req.kargs)
+            if isinstance(data, File):
+                return data.content_type, data.payload
+            elif isinstance(data, io.IOBase):
+                fd = data
+                data = fd.read()
+                content_type = HttpContentType.getType(fd.name)
+                fd.close()
+                return content_type, data
+            else:
+                HttpResponseType.ServerError('returned data is not file descriptor')
+    
+    def wrapper(func):
+        create_service()
+        Pygics.Service.register(DownloadAction(func, HttpMethodType.Get, url))
+        return func
+    
+    return wrapper
+
+
+def rest(method, url):
+    
+    class RestAction(Action):
+    
+        def __init__(self, func, method, url):
+            Action.__init__(self, func, method, url)
+        
+        def __run__(self, req):
+            data = self._pygics_action_func(req, *req.args, **req.kargs)
+            if isinstance(data, dict) or isinstance(data, list):
+                return HttpContentType.AppJson, dumpJson(data)
+            elif not data:
+                return HttpContentType.TextPlain, ''
+            else:
+                return HttpContentType.TextPlain, str(data)
+    
+    def wrapper(func):
+        create_service()
+        Pygics.Service.register(RestAction(func, method, url))
+        return func
+    
+    return wrapper
+
+
+def server(ip, port=80, modules=[], favicon=None, static=False):
+    
+    #===========================================================================
+    # Init Service
+    #===========================================================================
+    create_service()
+    
+    #===========================================================================
+    # Start Web Default Service
+    #===========================================================================
+    static_path, _ = os.path.split(__file__)
+    static_path = static_path + '/static'
+    if favicon:
+        if not os.path.exists(favicon):
+            raise Exception('could not find favicon')
     else:
-        __ENV__.UUID = str(uuid.uuid4())
-        with open(__ENV__.DIR._UID_FILE_, 'w') as fd: fd.write(__ENV__.UUID)
-    
-    if not os.path.exists(__ENV__.DIR._MOD_FILE_):
-        with open(__ENV__.DIR._MOD_FILE_, 'w') as fd: fd.write(json.dumps({'list' : [], 'desc' : {}}))
-    
-    class RedirectLogger:
-        def __init__(self, logger): self.logger = logger
-        def write(self, msg):
-            if msg == '\n': pass
-            else: self.logger.info(msg)
-        def flush(self): pass
-    
-    __ENV__.LOG = Logger('pygics')
-    file_handler = TimedRotatingFileHandler(__ENV__.DIR._LOG_FILE_, when='D', backupCount=7)
-    file_handler.setFormatter(Formatter('[%(asctime)s] %(message)s'))
-    __ENV__.LOG.addHandler(file_handler)
-    __ENV__.LOG.addHandler(StreamHandler())
-    sys.stdout = RedirectLogger(__ENV__.LOG)
-    
-    setGlobals(ENV=__ENV__, PWD=__ENV__.PWD, PMD=__ENV__.PMD, LOG=__ENV__.LOG)
+        favicon = static_path + '/image/favicon.ico'
 
-def server(ip, port=80, *modules):
-     
-    #===========================================================================
-    # Initial Setup
-    #===========================================================================
-    environment()
-    __ENV__.NET.IP = ip
-    __ENV__.NET.PORT = port
-     
-    #===========================================================================
-    # Load Modules
-    #===========================================================================
+    @download('/favicon.ico')
+    def favicon_sender(req, *path, **param):
+        return File(favicon)
     
-    try:
-        for path in modules: __ENV__.MOD.install(path)
-        for path in __ENV__.MOD.getRegistered()['list']: __ENV__.MOD.install(path)
-    except Exception as e:
-        __ENV__.LOG.exception(str(e))
-        exit(1)
+    if static:
+
+        @download('/pygics')
+        def pygics_sender(req, *path, **param):
+            path = '/'.join(path)
+            if path == 'js': return File(static_path + '/js/pygics.js')
+            elif path == 'css': return File(static_path + '/css/pygics.css')
+            else: return File(static_path + '/%s' % path)
     
     #===========================================================================
-    # Run Server
+    # Init Modules
     #===========================================================================
-    def __pygics_wsgi_application__(request, response):
-        try: request = Request(request)
-        except Response.__HTTP__ as e:
-            __ENV__.LOG.exception(str(e))
+    if not isinstance(modules, list): modules = [modules]
+    for mod in modules: load(mod)
+    
+    #===========================================================================
+    # Pygics WSGI Handler
+    #===========================================================================
+    def __application__(request, response):
+        try:
+            req = Request(request)
+        except HttpResponseType.__ERROR__ as e:
             response(e.status, e.headers)
             return [e.data.encode()]
         except Exception as e:
-            __ENV__.LOG.exception(str(e))
-            response('400 Bad Request', [('Content-Type', ContentType.AppJson)])
+            traceback.print_exc()
+            logError('[Pygics Request] %s' % str(e))
+            response('400 Bad Request', [('Content-Type', HttpContentType.AppJson)])
             return [json.dumps({'error' : str(e)}).encode()]
-        result = request.api(request, response)
-        if isinstance(result, str): return [result.encode()]
-        else: return [result]
-    
-    try:
-        WSGIServer((ip, port),
-                   application=__pygics_wsgi_application__,
-                   log=__ENV__.LOG,
-                   error_log=__ENV__.LOG).serve_forever()
+        
+        res = req.action.__wsi__(req)
+        response(res.status, res.headers)
+        if isinstance(res.data, str):
+            return [res.data.encode()]
+        else:
+            return [res.data]
+        
+    #===========================================================================
+    # Run Server
+    #===========================================================================
+    try: WSGIServer((ip, port), application=__application__, log=sys.stdout).serve_forever()
     except (KeyboardInterrupt, SystemExit): print('pygics interrupted')
     except: raise
- 
-def export(method, url, content_type=ContentType.AppStream):
-    
-    def wrapper(logic):
-        
-        def exporter(req, res):
-            try:
-                # Run API Processing
-                data = logic(req, *req.args, **req.kargs)
-                # Deciding Content Type
-                if isinstance(data, dict) or isinstance(data, list):
-                    data = json.dumps(data)
-                    content_type = req.content_type if req.content_type else ContentType.AppJson
-                elif isinstance(data, str):
-                    data = data
-                    content_type = req.content_type if req.content_type else ContentType.TextPlain
-                elif isinstance(data, int) or isinstance(data, float):
-                    data = str(data)
-                    content_type = req.content_type if req.content_type else ContentType.TextPlain
-                elif isinstance(data, io.IOBase):
-                    fd = data
-                    content_type = req.content_type if req.content_type else ContentType.getType(fd.name)
-                    data = fd.read()
-                    fd.close()
-                elif not data:
-                    data = ''
-                    content_type = req.content_type if req.content_type else ContentType.TextPlain
-                else:
-                    content_type = req.content_type if req.content_type else ContentType.AppStream
-            # Exception Processing
-            except Response.__HTTP__ as e:
-                res(e.status, e.headers)
-                return e.data
-            except TypeError as e:
-                __ENV__.LOG.exception(str(e))
-                res('400 Bad Request', [('Content-Type', ContentType.AppJson)])
-                return json.dumps({'error' : str(e)})
-            except Exception as e:
-                __ENV__.LOG.exception(str(e))
-                res('500 Internal Server Error', [('Content-Type', ContentType.AppJson)])
-                return json.dumps({'error' : str(e)})
-            # Build Response
-            headers = [('Content-Type', content_type)]
-            if req.cookies_new:
-                for k, v in req.cookies_new.items(): headers.append(('Set-Cookie', '%s=%s' % (k, v)))
-            res('200 OK', headers)
-            return data
-        
-        __ENV__.URI.register(logic, exporter, method, url, content_type)
-        return exporter
-     
-    return wrapper
 
-def plugin(plugin_instance):
-    def wrapper(logic):
-        def exporter(req, res):
-            plugin_instance.__prev__(req, res)
-            data = logic(req, res)
-            return plugin_instance.__post__(req, res, data)
-        if hasattr(logic, '__logic__'): exporter.__logic__ = logic.__logic__
-        else: exporter.__logic__ = logic
-        return exporter
-    return wrapper
-
-def rest(method, url):
-    return export(method, url, content_type=ContentType.AppJson)
