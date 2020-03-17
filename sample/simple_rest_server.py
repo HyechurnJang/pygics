@@ -10,41 +10,58 @@ Created on 2020. 3. 17..
 @author: Hye-Churn Jang, CMBU Specialist in Korea, VMware [jangh@vmware.com]
 '''
 
-from pygics import rest, server
+from pygics import rest, server, setEnv
+
+history = []
 
 
-@rest('GET', '/calculator/add')
+@rest('GET', '/api/calculator/add')
 def calc_add(req, a, b):
     '''
     calling follow as
-      - GET /calculator/add/100/10
-      - GET /calculator/add?a=100&b=10
+      - GET /api/calculator/add/100/10
+      - GET /api/calculator/add?a=100&b=10
     '''
-    return {'result' : int(a) + int(b)}
+    result = int(a) + int(b)
+    history.append(result)
+    return {'result' : result}
 
 
-@rest('GET', '/calculator/sub')
+@rest('GET', '/api/calculator/sub')
 def calc_sub(req, a, b):
     '''
     calling follow as
-      - GET /calculator/sub/100/10
-      - GET /calculator/sub?a=100&b=10
+      - GET /api/calculator/sub/100/10
+      - GET /api/calculator/sub?a=100&b=10
     '''
-    return {'result' : int(a) - int(b)}
+    result = int(a) - int(b)
+    history.append(result)
+    return {'result' : result}
 
 
-@rest('POST', '/calculator/multi-add')
+@rest('POST', '/api/calculator/multi-add')
 def calc_multi_add(req):
     '''
     calling follow as
-      - POST /calculator/multi-add
+      - POST /api/calculator/multi-add
     request body = [ NUM-1, NUM-2, NUM-3, ... NUM-N ]
     '''
     nums = req.data
     result = 0
     for num in nums:
         result += num
+    history.append(result)
     return {'result' : result}
+
+
+@rest('GET', '/api/calculator')
+def calc_history(req, id=None):
+    if id != None:
+        return {'result' : {'id' : int(id), 'data' : history[int(id)]}}
+    result = []
+    for i in range(0, len(history)):
+        result.append({'result' : {'id' : str(i), 'data' : history[i]}})
+    return {'history' : result}
 
 
 if __name__ == '__main__':

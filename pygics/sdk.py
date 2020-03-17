@@ -10,7 +10,6 @@ Created on 2020. 3. 9..
 @author: Hye-Churn Jang, CMBU Specialist in Korea, VMware [jangh@vmware.com]
 '''
 
-import json
 import urllib3
 urllib3.disable_warnings()
 from builtins import staticmethod
@@ -20,7 +19,7 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 from sqlalchemy import Table as saTable, MetaData
 from inspect import isclass
-from .common import dumpJson, logInfo
+from .common import dumpJson, logInfo, logDebug
 from .struct import PygObj, singleton
 from .task import Lock
 
@@ -458,34 +457,34 @@ class Rest(Driver):
     # HTTP Methods
     #===========================================================================
     def doGetMethod(self, url):
-        logInfo('[%s SDK] GET > %s' % (self.__class__.__name__, url))
+        logDebug('[%s SDK] GET > %s' % (self.__class__.__name__, url))
         resp = self.account.session.get(self.account.url + url)
         resp.raise_for_status()
         return resp
     
     def doPostMethod(self, url, data=None):
         if data == None: data = {}
-        logInfo('[%s SDK] POST > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
+        logDebug('[%s SDK] POST > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
         resp = self.account.session.post(self.account.url + url, json=data)
         resp.raise_for_status()
         return resp
     
     def doPutMethod(self, url, data=None):
         if data == None: data = {}
-        logInfo('[%s SDK] PUT > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
+        logDebug('[%s SDK] PUT > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
         resp = self.account.session.put(self.account.url + url, json=data)
         resp.raise_for_status()
         return resp
     
     def doPatchMethod(self, url, data=None):
         if data == None: data = {}
-        logInfo('[%s SDK] PATCH > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
+        logDebug('[%s SDK] PATCH > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
         resp = self.account.session.patch(self.account.url + url, json=data)
         resp.raise_for_status()
         return resp
     
     def doDeleteMethod(self, url):
-        logInfo('[%s SDK] DELETE > %s' % (self.__class__.__name__, url))
+        logDebug('[%s SDK] DELETE > %s' % (self.__class__.__name__, url))
         resp = self.account.session.delete(self.account.url + url)
         resp.raise_for_status()
         return resp
@@ -517,10 +516,10 @@ class Rest(Driver):
             model.__meta__.keys_data = list(keys.values())
             model.__meta__.list_layer = list_layer if list_layer != None else self.list_layer
             model.__meta__.layer = layer if layer != None else self.layer
-            if api: model.__meta__.api = api
-            if url: model.__meta__.url = url
+            if api != None: model.__meta__.api = api
+            if url != None: model.__meta__.url = url
             
-#             logInfo('[SDK.%s] Register > %s' % (self.__class__.__name__, str(model).split("'")[1]))
+            logDebug('[SDK.%s] Register > %s' % (self.__class__.__name__, str(model).split("'")[1]))
             return model
 
         return wrapper
@@ -528,7 +527,7 @@ class Rest(Driver):
     def entry(self, model):
         model.__meta__.entry = True
         self.__setattr__(model.__name__, model)
-        logInfo('[SDK.%s] Entry > SDK.%s.%s' % (self.__class__.__name__, self.__class__.__name__, model.__name__))
+        logInfo('[SDK.%s] Register Entry > SDK.%s.%s' % (self.__class__.__name__, self.__class__.__name__, model.__name__))
         return model
     
     def create(self, def_model=None):
@@ -625,7 +624,7 @@ class Database(Driver):
         self.proto = proto
         self.metadata = MetaData()
     
-    def config(self, host, username=None, password=None):
+    def system(self, host, username=None, password=None):
         self.host = host
         if username and password: self.account = '%s:%s' % (username, password)
         elif username: self.account = username

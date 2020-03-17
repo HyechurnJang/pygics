@@ -20,35 +20,52 @@ import traceback
 from watchdog_gevent import Observer
 from watchdog.events import FileSystemEventHandler
 
+__builtins__['__PYG_LOG_LEVEL__'] = 3
 
-class LogType:
+
+class LogLevel:
     
-    Debug = 'Debug'
-    Info = 'Info'
-    Warn = 'Warning'
-    Error = 'Error'
+    Debug = 4  # gt 3
+    Info = 3  # gt 2
+    Warn = 2  # gt 1
+    Error = 1  # gt 0
+    
+    class LogType:
+    
+        Debug = 'Debug'
+        Info = 'Info-'
+        Warn = 'Warn-'
+        Error = 'Error'
+    
+    @classmethod
+    def setLogLevel(cls, level):
+        __builtins__['__PYG_LOG_LEVEL__'] = level
 
 
-def log(msg, level=LogType.Info, bold=False):
-    lmsg = '#%s#' % level.upper() if bold else '-%s-' % level
-    msg = '[%s][%s]%s' % (datetime.datetime.now(), lmsg, msg)
+def log(msg, level=LogLevel.LogType.Info, bold=False):
+    lmsg = '!%s!' % level.upper() if bold else ' %s ' % level
+    msg = '[%s] [%s] %s' % (datetime.datetime.now(), lmsg, msg)
     print(msg)
 
 
 def logDebug(msg, bold=False):
-    log(msg, LogType.Debug, bold)
+    if __PYG_LOG_LEVEL__ > 3:
+        log(msg, LogLevel.LogType.Debug, bold)
 
 
 def logInfo(msg, bold=False):
-    log(msg, LogType.Info, bold)
+    if __PYG_LOG_LEVEL__ > 2:
+        log(msg, LogLevel.LogType.Info, bold)
 
 
 def logWarn(msg, bold=False):
-    log(msg, LogType.Warn, bold)
+    if __PYG_LOG_LEVEL__ > 1:
+        log(msg, LogLevel.LogType.Warn, bold)
 
 
 def logError(msg, bold=True):
-    log(msg, LogType.Error, bold)
+    if __PYG_LOG_LEVEL__ > 0:
+        log(msg, LogLevel.LogType.Error, bold)
 
 
 def setEnv(**kwargs):

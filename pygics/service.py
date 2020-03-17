@@ -35,14 +35,14 @@ def create_service():
         
         def register(self, action):
             ref = self
-            for name in action._pygics_action_path:
+            for name in action._pyg_action_path:
                 children = +ref
                 if name in children:
                     ref = children[name]
                 else:
                     ref = Inventory(tracking=False).setParent(ref, name)
-            action.setParent(ref, action._pygics_action_method)
-            logInfo('[Pygics Service] Register > URL=%s:%s > Action=%s.%s' % (action._pygics_action_method, action._pygics_action_url, action._pygics_action_module, action._pygics_action_fname))
+            action.setParent(ref, action._pyg_action_method)
+            logInfo('[Pygics Service] Register > URL=%s:%s > Action=%s.%s' % (action._pyg_action_method, action._pyg_action_url, action._pyg_action_module, action._pyg_action_fname))
         
         def search(self, request):
             ref = self
@@ -60,14 +60,14 @@ class Action(Inventory):
     
     def __init__(self, func, method, url):
         Inventory.__init__(self, tracking=False)
-        self._pygics_action_func = func
-        self._pygics_action_fname = func.__name__
-        self._pygics_action_module = func.__module__
-        self._pygics_action_method = method.upper()
-        if self._pygics_action_method not in HttpMethodType.SupportList:
-            raise Exception('could not register unsupported method %s' % self._pygics_action_method)
-        self._pygics_action_url = url
-        self._pygics_action_path = list(filter(None, url.split('/')))
+        self._pyg_action_func = func
+        self._pyg_action_fname = func.__name__
+        self._pyg_action_module = func.__module__
+        self._pyg_action_method = method.upper()
+        if self._pyg_action_method not in HttpMethodType.SupportList:
+            raise Exception('could not register unsupported method %s' % self._pyg_action_method)
+        self._pyg_action_url = url
+        self._pyg_action_path = list(filter(None, url.split('/')))
     
     def __wsi__(self, req):
         try:
@@ -78,7 +78,7 @@ class Action(Inventory):
             return HttpResponseType.BadRequest(str(e), exception=False)
         except Exception as e:
             traceback.print_exc()
-            logError('[Pygics Action] %s.%s > %s' % (self._pygics_action_module, self._pygics_action_fname, str(e)))
+            logError('[Pygics Action] %s.%s > %s' % (self._pyg_action_module, self._pyg_action_fname, str(e)))
             return HttpResponseType.ServerError(str(e), exception=False)
         else:
             headers = [('Content-Type', content_type)]
@@ -123,7 +123,7 @@ class Request:
                 if kv: self.cookies[kv.group('key')] = kv.group('val')
         
         # Array Parameter
-        self.args = self.path[len(self.action._pygics_action_path):]
+        self.args = self.path[len(self.action._pyg_action_path):]
         
         # Query Parameter
         for query in request['QUERY_STRING'].split('&'):
@@ -219,7 +219,7 @@ def download(url):
             Action.__init__(self, func, method, url)
         
         def __run__(self, req):
-            data = self._pygics_action_func(req, *req.args, **req.kargs)
+            data = self._pyg_action_func(req, *req.args, **req.kargs)
             if isinstance(data, File):
                 return data.content_type, data.payload
             elif isinstance(data, io.IOBase):
@@ -247,7 +247,7 @@ def rest(method, url):
             Action.__init__(self, func, method, url)
         
         def __run__(self, req):
-            data = self._pygics_action_func(req, *req.args, **req.kargs)
+            data = self._pyg_action_func(req, *req.args, **req.kargs)
             if isinstance(data, dict) or isinstance(data, list):
                 return HttpContentType.AppJson, dumpJson(data)
             elif not data:
@@ -327,6 +327,6 @@ def server(ip, port, *modules, **configs):
     # Run Server
     #===========================================================================
     try: WSGIServer((ip, port), application=__application__, log=sys.stdout).serve_forever()
-    except (KeyboardInterrupt, SystemExit): print('pygics interrupted')
+    except (KeyboardInterrupt, SystemExit): logInfo('[Pygics Server] Interrupted')
     except: raise
 

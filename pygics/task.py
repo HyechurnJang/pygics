@@ -75,21 +75,21 @@ class Task(PygObj):
     # Operation Methods
     #===========================================================================
     def start(self):
-        if not self._pygics_task:
-            self._pygics_task_sw = True
-            self._pygics_task = gevent.spawn(self.__thread_wrapper__)
+        if not self._pyg_task:
+            self._pyg_task_sw = True
+            self._pyg_task = gevent.spawn(self.__thread_wrapper__)
         return self
     
     def stop(self):
-        if self._pygics_task:
-            self._pygics_task_sw = False
-            gevent.kill(self._pygics_task)
-            gevent.joinall([self._pygics_task])
-            self._pygics_task = None
+        if self._pyg_task:
+            self._pyg_task_sw = False
+            gevent.kill(self._pyg_task)
+            gevent.joinall([self._pyg_task])
+            self._pyg_task = None
         return self
     
     def isRun(self):
-        return self._pygics_task_sw
+        return self._pyg_task_sw
     
     #===========================================================================
     # Class Methods
@@ -110,10 +110,10 @@ class Task(PygObj):
     # Life Cycle Methods
     #===========================================================================
     def __init__(self, tick=0, delay=0):
-        self._pygics_task = None
-        self._pygics_task_sw = False
-        self._pygics_task_tick = tick
-        self._pygics_task_delay = delay
+        self._pyg_task = None
+        self._pyg_task_sw = False
+        self._pyg_task_tick = tick
+        self._pyg_task_delay = delay
     
     def __kill__(self):
         self.stop()
@@ -122,16 +122,16 @@ class Task(PygObj):
     # Inner Management
     #===========================================================================
     def __thread_wrapper__(self):
-        if self._pygics_task_delay > 0: gevent.sleep(self._pygics_task_delay)
-        while self._pygics_task_sw:
-            if self._pygics_task_tick > 0:
+        if self._pyg_task_delay > 0: gevent.sleep(self._pyg_task_delay)
+        while self._pyg_task_sw:
+            if self._pyg_task_tick > 0:
                 start_time = time.time()
                 try: self.__run__()
                 except Exception as e:
                     traceback.print_exc()
                     logError('[Pygics Task] %s' % str(e))
                 end_time = time.time()
-                sleep_time = self._pygics_task_tick - (end_time - start_time)
+                sleep_time = self._pyg_task_tick - (end_time - start_time)
                 if sleep_time > 0: gevent.sleep(sleep_time)
                 else:
                     logWarn('[Pygics Task] processing time over tick')
@@ -156,13 +156,13 @@ class Burst(PygObj):
         return self.register(self, method, *argv, **kargs)
     
     def register(self, method, *argv, **kargs):
-        self._pygics_burst_methods.append(method)
-        self._pygics_burst_args.append(argv)
-        self._pygics_burst_kargs.append(kargs)
+        self._pyg_burst_methods.append(method)
+        self._pyg_burst_args.append(argv)
+        self._pyg_burst_kargs.append(kargs)
         return self
     
     def start(self):
-        ret = [None for i in range(0, len(self._pygics_burst_methods))]
+        ret = [None for i in range(0, len(self._pyg_burst_methods))]
         
         def fetch(_method, _ret, _index, *argv, **kargs):
             try: _ret[_index] = _method(*argv, **kargs)
@@ -170,30 +170,30 @@ class Burst(PygObj):
                 traceback.print_exc()
                 logError('[Pygics Burst] %s' % str(e))
         
-        for i in range(0, len(self._pygics_burst_methods)):
-            self._pygics_burst_fetches.append(gevent.spawn(fetch,
-                                                           self._pygics_burst_methods[i],
+        for i in range(0, len(self._pyg_burst_methods)):
+            self._pyg_burst_fetches.append(gevent.spawn(fetch,
+                                                           self._pyg_burst_methods[i],
                                                            ret,
                                                            i,
-                                                           *self._pygics_burst_args[i],
-                                                           **self._pygics_burst_kargs[i]))
+                                                           *self._pyg_burst_args[i],
+                                                           **self._pyg_burst_kargs[i]))
         
-        gevent.joinall(self._pygics_burst_fetches)
-        self._pygics_burst_fetches = []
+        gevent.joinall(self._pyg_burst_fetches)
+        self._pyg_burst_fetches = []
         return ret
     
     def stop(self):
-        if self._pygics_burst_fetches:
-            for fetch in self._pygics_burst_fetches: gevent.kill(fetch)
+        if self._pyg_burst_fetches:
+            for fetch in self._pyg_burst_fetches: gevent.kill(fetch)
     
     #===========================================================================
     # Life Cycle Methods
     #===========================================================================
     def __init__(self):
-        self._pygics_burst_fetches = []
-        self._pygics_burst_methods = []
-        self._pygics_burst_args = []
-        self._pygics_burst_kargs = []
+        self._pyg_burst_fetches = []
+        self._pyg_burst_methods = []
+        self._pyg_burst_args = []
+        self._pyg_burst_kargs = []
     
     def __kill__(self):
         self.stop()
