@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.0.1
+version : 1.0.2
 
-last change : new launch 1.0.1
+last change : new launch 1.0.2
 
 ## What is Pygics?
 
