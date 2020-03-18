@@ -174,7 +174,8 @@ class Model(dict):
                 prop.append(name)
             elif 'function' in attr_type:
                 if '__inst_' in attr_addr:
-                    life.append(name + '()')
+                    if '__inst_' not in name:
+                        life.append(name + '()')
                 elif '__' not in name:
                     func.append(name + '()')
                 elif '__init_wrapper__' == name:
@@ -189,7 +190,8 @@ class Model(dict):
                     subm.append(name)
             elif 'method' in attr_type:
                 if '__class_' in attr_addr:
-                    life.append(name + '()')
+                    if '__class_' not in name:
+                        life.append(name + '()')
         
         return '''{name}
   CRUD Actions (self call action to {call}){life}
