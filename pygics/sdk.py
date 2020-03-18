@@ -194,7 +194,7 @@ class Model(dict):
                         life.append(name + '()')
         
         return '''{name}
-  CRUD Actions (self call action to {call}){life}
+  CRUD Actions (self calling action is "{call}"){life}
   Properties:{prop}
   Sub-Models:{subm}
   Defined Actions:{func}{intent}'''.format(
