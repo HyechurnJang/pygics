@@ -16,7 +16,7 @@ gevent.monkey.patch_all()
 #===============================================================================
 # General Structure & Function
 #===============================================================================
-from .common import LogLevel, log, logDebug, logInfo, logWarn, logError, setEnv, loadJson, dumpJson, ppJson, loadYaml, dumpYaml, load
+from .common import LogLevel, log, logDebug, logInfo, logWarn, logError, setEnv, setEnvObject, loadJson, dumpJson, ppJson, loadYaml, dumpYaml, load
 from .struct import PygObj, Inventory, kill, singleton
 from .constant import HttpMethodType, HttpContentType, HttpResponseType, Schema
 

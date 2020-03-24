@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.0.3
+version : 1.0.4
 
-last change : change sdk help message
+last change : add setEnvObject, adjust static file path, update setup.py
 
 ## What is Pygics?
 

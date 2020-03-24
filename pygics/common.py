@@ -72,6 +72,12 @@ def setEnv(**kwargs):
     for k, v in kwargs.items(): __builtins__[k] = v
 
 
+def setEnvObject(obj):
+    try: setEnv(**{obj.__name__ : obj})
+    except: raise Exception('could not register object')
+    return obj
+
+
 def loadJson(json_str):
     return json.loads(json_str)
 

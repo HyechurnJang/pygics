@@ -19,7 +19,7 @@ def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).rea
 
 setup(
     name='pygics',
-    version='1.0.3',
+    version='1.0.4',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='jangh@vmware.com',
@@ -28,6 +28,7 @@ setup(
     long_description=read('README'),
     long_description_content_type="text/markdown",
     packages=['pygics'],
+    package_data = {'pygics' : ['static/*']},
     install_requires=['gevent', 'requests', 'PyYAML', 'watchdog', 'watchdog_gevent', 'SQLAlchemy'],
     classifiers=[
         'License :: OSI Approved :: Apache Software License',

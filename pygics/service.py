@@ -285,15 +285,15 @@ def server(ip, port, *modules, **configs):
 
         @download('/favicon.ico')
         def favicon_sender(req, *path, **param):
-            return File(static_path + '/image/favicon.ico')
+            return File(static_path + '/favicon.ico')
     
     if static:
 
         @download('/pygics')
         def pygics_sender(req, *path, **param):
             path = '/'.join(path)
-            if path == 'js': return File(static_path + '/js/pygics.js')
-            elif path == 'css': return File(static_path + '/css/pygics.css')
+            if path == 'js': return File(static_path + '/pygics.js')
+            elif path == 'css': return File(static_path + '/pygics.css')
             else: return File(static_path + '/%s' % path)
     
     #===========================================================================
