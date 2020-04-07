@@ -11,7 +11,7 @@ Created on 2020. 2. 15.
 '''
 
 from inspect import isclass, getmro
-from .common import logInfo
+from .common import logDebug
 
 
 class PygObj(object):
@@ -94,7 +94,7 @@ class Inventory(PygObj):
 def kill(obj):
     if isinstance(obj, PygObj):
         obj.__pygobj_kill__()
-        logInfo('[Pygics Object] kill %s' % obj.__class__.__name__)
+        logDebug('[Pygics Object] kill %s' % obj.__class__.__name__)
     del obj
 
 
@@ -111,7 +111,7 @@ def singleton(*args, **kwargs):
         if not hasattr(__builtins__[st_namespace], st_name):
             inst = cls(*args, **kwargs)
             __builtins__[st_namespace].__setattr__(st_name, inst)
-            logInfo('[Pygics Singleton] create singleton %s > %s.%s' % (cl_name, st_namespace, st_name), bold=True)
+            logDebug('[Pygics Singleton] create singleton %s > %s.%s' % (cl_name, st_namespace, st_name), bold=True)
         else:
             inst = __builtins__[st_namespace].__getattribute__(st_name)
         return inst

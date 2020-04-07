@@ -33,8 +33,8 @@ class LogLevel:
     class LogType:
     
         Debug = 'Debug'
-        Info = 'Info-'
-        Warn = 'Warn-'
+        Info = 'Info'
+        Warn = 'Warning'
         Error = 'Error'
     
     @classmethod
@@ -43,7 +43,7 @@ class LogLevel:
 
 
 def log(msg, level=LogLevel.LogType.Info, bold=False):
-    lmsg = '!%s!' % level.upper() if bold else ' %s ' % level
+    lmsg = '%s' % level.upper() if bold else '%s' % level
     msg = '[%s] [%s] %s' % (datetime.datetime.now(), lmsg, msg)
     print(msg)
 
@@ -114,7 +114,7 @@ def load(path):
                 logError('[Pygics Module] %s > %s' % (str(e), path))
                 return
             __PYG_MODULES_BY_PATH__[path] = mod
-            logInfo('[Pygics Module] Reload > %s' % path, bold=True)
+            logDebug('[Pygics Module] Reload > %s' % path)
     
     class Watcher(Observer):
          
@@ -151,5 +151,5 @@ def load(path):
         __PYG_MODULES_BY_PATH__[path] = mod
         __PYG_MODULES_BY_FILE__[fs_path] = path
         __PYG_MODULES_WATCHER__.register(fs_path)
-        logInfo('[Pygics Module] Loaded > %s' % path, bold=True)
+        logDebug('[Pygics Module] Loaded > %s' % path)
         return mod

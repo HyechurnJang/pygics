@@ -20,7 +20,7 @@ import traceback
 from gevent.pywsgi import WSGIServer
 from watchdog_gevent import Observer
 from watchdog.events import FileSystemEventHandler
-from .common import logInfo, logError, load, dumpJson
+from .common import logDebug, logError, load, dumpJson
 from .struct import PygObj, Inventory, singleton
 from .constant import HttpMethodType, HttpContentType, HttpResponseType
 
@@ -42,7 +42,7 @@ def create_service():
                 else:
                     ref = Inventory(tracking=False).setParent(ref, name)
             action.setParent(ref, action._pyg_action_method)
-            logInfo('[Pygics Service] Register > URL=%s:%s > Action=%s.%s' % (action._pyg_action_method, action._pyg_action_url, action._pyg_action_module, action._pyg_action_fname))
+            logDebug('[Pygics Service] Register > URL=%s:%s > Action=%s.%s' % (action._pyg_action_method, action._pyg_action_url, action._pyg_action_module, action._pyg_action_fname))
         
         def search(self, request):
             ref = self
@@ -187,7 +187,7 @@ def download(url):
                         path = event.src_path
                         with open(path, 'rb') as fd:
                             Pygics.FileCache[path] = (HttpContentType.getType(fd.name), fd.read())
-                        logInfo('[Pygics FileCache] Reload > %s' % path)
+                        logDebug('[Pygics FileCache] Reload > %s' % path)
                 
                 Observer.__init__(self)
                 self._pyg_watcher_handler = FileCacheHandler()
@@ -327,6 +327,5 @@ def server(ip, port, *modules, **configs):
     # Run Server
     #===========================================================================
     try: WSGIServer((ip, port), application=__application__, log=sys.stdout).serve_forever()
-    except (KeyboardInterrupt, SystemExit): logInfo('[Pygics Server] Interrupted')
+    except (KeyboardInterrupt, SystemExit): logDebug('[Pygics Server] Interrupted')
     except: raise
-

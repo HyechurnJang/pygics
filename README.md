@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.0.4
+version : 1.1.0
 
-last change : add setEnvObject, adjust static file path, update setup.py
+last change : add pygics component client, arrange logs
 
 ## What is Pygics?
 

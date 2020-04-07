@@ -19,9 +19,9 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 from sqlalchemy import Table as saTable, MetaData
 from inspect import isclass
-from .common import dumpJson, logInfo, logDebug
+from .common import dumpJson, logDebug
 from .struct import PygObj, singleton
-from .task import Lock
+from .task import Lock, sleep
 
 
 class Driver(PygObj):
@@ -29,11 +29,67 @@ class Driver(PygObj):
     #===========================================================================
     # End User Interface
     #===========================================================================
-    def config(self, *args, **kwargs): pass
+    def system(self, *args, **kwargs): pass
 
 
 def sdk(client):
     return singleton(client, st_namespace='SDK', st_name=client.__name__)
+
+#===============================================================================
+# Pygics Component Client SDK
+#===============================================================================
+
+
+class ClientPath(PygObj):
+    
+    def __init__(self, session, method, init_path):
+        self.__session__ = session
+        self.__method__ = method
+        self.__path__ = init_path
+    
+    def __getattr__(self, path):
+        self.__path__ = '%s/%s' % (self.__path__, path)
+        return self
+    
+    def __call__(self, *args, **kwargs):
+        if args:
+            for arg in args:
+                self.__path__ = '%s/%s' % (self.__path__, str(arg))
+        if self.__method__ == 'GET':
+            resp = self.__session__.get(self.__path__)
+        elif self.__method__ == 'POST':
+            resp = self.__session__.post(self.__path__, json=kwargs)
+        elif self.__method__ == 'PUT':
+            resp = self.__session__.put(self.__path__, json=kwargs)
+        elif self.__method__ == 'DELETE':
+            resp = self.__session__.delete(self.__path__)
+        else:
+            raise Exception('can not execute unsupported method %s' % self.__method__)
+        resp.raise_for_status()
+        return resp.json()
+            
+
+class Client(Driver):
+    
+    def __init__(self, host, port, base_url):
+        self.init_path = 'http://%s:%d%s' % (host, port, base_url)
+        self.session = requests.Session()
+    
+    @property
+    def GET(self):
+        return ClientPath(self.session, 'GET', self.init_path)
+    
+    @property
+    def POST(self):
+        return ClientPath(self.session, 'POST', self.init_path)
+    
+    @property
+    def PUT(self):
+        return ClientPath(self.session, 'PUT', self.init_path)
+    
+    @property
+    def DELETE(self):
+        return ClientPath(self.session, 'DELETE', self.init_path)
 
 
 #===============================================================================
@@ -271,11 +327,12 @@ class Model(dict):
 
 class RestUser:
             
-    def __init__(self, sdk, url, username, password):
+    def __init__(self, sdk, url, username, password, retry=3):
         self.sdk = sdk
         self.url = url
         self.username = username
         self.password = password
+        self.retry = retry
         self.sdk.lock.on()
         self.sdk.account = self
         self.__session__()
@@ -460,35 +517,70 @@ class Rest(Driver):
     #===========================================================================
     def doGetMethod(self, url):
         logDebug('[%s SDK] GET > %s' % (self.__class__.__name__, url))
-        resp = self.account.session.get(self.account.url + url)
-        resp.raise_for_status()
+        for delay in range(0, self.account.retry):
+            resp = self.account.session.get(self.account.url + url)
+            if resp.status_code == 401:
+                logDebug('[%s SDK] Refresh Session')
+                sleep(delay)
+                self.account.__refresh__()
+                continue
+            resp.raise_for_status()
+            break
         return resp
     
     def doPostMethod(self, url, data=None):
         if data == None: data = {}
         logDebug('[%s SDK] POST > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
-        resp = self.account.session.post(self.account.url + url, json=data)
-        resp.raise_for_status()
+        for delay in range(0, self.account.retry):
+            resp = self.account.session.post(self.account.url + url, json=data)
+            if resp.status_code == 401:
+                logDebug('[%s SDK] Refresh Session')
+                sleep(delay)
+                self.account.__refresh__()
+                continue
+            resp.raise_for_status()
+            break
         return resp
     
     def doPutMethod(self, url, data=None):
         if data == None: data = {}
         logDebug('[%s SDK] PUT > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
-        resp = self.account.session.put(self.account.url + url, json=data)
-        resp.raise_for_status()
+        for delay in range(0, self.account.retry):
+            resp = self.account.session.put(self.account.url + url, json=data)
+            if resp.status_code == 401:
+                logDebug('[%s SDK] Refresh Session')
+                sleep(delay)
+                self.account.__refresh__()
+                continue
+            resp.raise_for_status()
+            break
         return resp
     
     def doPatchMethod(self, url, data=None):
         if data == None: data = {}
         logDebug('[%s SDK] PATCH > %s < %s' % (self.__class__.__name__, url, dumpJson(data)))
-        resp = self.account.session.patch(self.account.url + url, json=data)
-        resp.raise_for_status()
+        for delay in range(0, self.account.retry):
+            resp = self.account.session.patch(self.account.url + url, json=data)
+            if resp.status_code == 401:
+                logDebug('[%s SDK] Refresh Session')
+                sleep(delay)
+                self.account.__refresh__()
+                continue
+            resp.raise_for_status()
+            break
         return resp
     
     def doDeleteMethod(self, url):
         logDebug('[%s SDK] DELETE > %s' % (self.__class__.__name__, url))
-        resp = self.account.session.delete(self.account.url + url)
-        resp.raise_for_status()
+        for delay in range(0, self.account.retry):
+            resp = self.account.session.delete(self.account.url + url)
+            if resp.status_code == 401:
+                logDebug('[%s SDK] Refresh Session')
+                sleep(delay)
+                self.account.__refresh__()
+                continue
+            resp.raise_for_status()
+            break
         return resp
     
     #===========================================================================
@@ -529,7 +621,7 @@ class Rest(Driver):
     def entry(self, model):
         model.__meta__.entry = True
         self.__setattr__(model.__name__, model)
-        logInfo('[SDK.%s] Register Entry > SDK.%s.%s' % (self.__class__.__name__, self.__class__.__name__, model.__name__))
+        logDebug('[SDK.%s] Register Entry > SDK.%s.%s' % (self.__class__.__name__, self.__class__.__name__, model.__name__))
         return model
     
     def create(self, def_model=None):

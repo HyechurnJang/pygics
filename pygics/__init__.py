@@ -34,4 +34,4 @@ import pygics.plugin
 #===============================================================================
 # Client
 #===============================================================================
-from .sdk import Model, ModelList, RestUser, Rest, Table, Database, sdk
+from .sdk import Client, Model, ModelList, RestUser, Rest, Table, Database, sdk
