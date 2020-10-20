@@ -72,7 +72,7 @@ class Action(Inventory):
     def __wsi__(self, req):
         try:
             content_type, data = self.__run__(req)
-        except HttpResponseType.__ERROR__ as e:
+        except HttpResponseType.__HTTP__ as e:
             return e
         except TypeError as e:
             return HttpResponseType.BadRequest(str(e), exception=False)
