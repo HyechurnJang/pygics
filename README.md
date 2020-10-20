@@ -4,7 +4,7 @@
 
 version : 1.1.2
 
-last change : add pygics component client, arrange logs
+last change : raise condition, encoding
 
 ## What is Pygics?
 
