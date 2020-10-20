@@ -2,7 +2,7 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.1.0
+version : 1.1.1
 
 last change : add pygics component client, arrange logs
 
