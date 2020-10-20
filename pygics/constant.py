@@ -151,7 +151,7 @@ class HttpResponseType:
 
         class __ServerError__(HttpResponseType.__ERROR__):
     
-            def __init__(self, headers=[], data='internal server error'):
+            def __init__(self, headers, data='internal server error'):
                 HttpResponseType.__ERROR__.__init__(self, '500 Internal Server Error', headers, data)
         
         if headers == None: headers = []
@@ -164,7 +164,7 @@ class HttpResponseType:
 
         class __NotImplemented__(HttpResponseType.__ERROR__):
     
-            def __init__(self, headers=[], data='not implemented'):
+            def __init__(self, headers, data='not implemented'):
                 HttpResponseType.__ERROR__.__init__(self, '501 Not Implemented', headers, data)
         
         if headers == None: headers = []
