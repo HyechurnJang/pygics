@@ -136,10 +136,10 @@ class Request:
             raw_data = request['wsgi.input'].read()
             if 'CONTENT_TYPE' in request:
                 content_type = request['CONTENT_TYPE'].lower()
-                if HttpContentType.AppJson in content_type: self.data = json.loads(raw_data)
+                if HttpContentType.AppJson in content_type: self.data = json.loads(str(raw_data))
                 elif HttpContentType.AppForm in content_type:
                     self.data = {}
-                    data_split = raw_data.split('&')
+                    data_split = str(raw_data).split('&')
                     for data in data_split:
                         kv = Request.XFORM_PARSER.match(urllib.parse.unquote_plus(data))
                         if kv: self.data[kv.group('key')] = kv.group('val')

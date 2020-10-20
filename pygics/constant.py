@@ -82,29 +82,32 @@ class HttpResponseType:
     #===========================================================================
     class OK(__HTTP__):  # 200
 
-        def __init__(self, data='', headers=[]):
+        def __init__(self, data='', headers=None):
+            if headers == None: headers = []
             HttpResponseType.__HTTP__.__init__(self, '200 OK', headers, data)
              
     class Redirect(__HTTP__):  # 302
 
-        def __init__(self, url, headers=[]):
+        def __init__(self, url, headers=None):
+            if headers == None: headers = []
             headers.append(('Location', url))
             HttpResponseType.__HTTP__.__init__(self, '302 Found', headers, '')
      
     @classmethod
-    def BadRequest(cls, data='bad request', headers=[], exception=True):  # 400
+    def BadRequest(cls, data='bad request', headers=None, exception=True):  # 400
         
         class __BadRequest__(HttpResponseType.__ERROR__):
 
             def __init__(self, headers, data):
                 HttpResponseType.__ERROR__.__init__(self, '400 Bad Request', headers, data)
         
+        if headers == None: headers = []
         obj = __BadRequest__(headers, data)
         if exception: raise obj
         else: return obj 
     
     @classmethod
-    def Unauthorized(cls, data='bad request', headers=[], exception=True):  # 401
+    def Unauthorized(cls, data='bad request', headers=None, exception=True):  # 401
         
         class __Unauthorized__(HttpResponseType.__ERROR__):
 
@@ -112,54 +115,59 @@ class HttpResponseType:
                 headers.append(('WWW-Authenticate', 'Basic realm="pygics"'))
                 HttpResponseType.__ERROR__.__init__(self, '401 Unauthorized', headers, data)
         
+        if headers == None: headers = []
         obj = __Unauthorized__(headers, data)
         if exception: raise obj
         else: return obj 
     
     @classmethod
-    def Forbidden(cls, data='forbidden', headers=[], exception=True):  # 403
+    def Forbidden(cls, data='forbidden', headers=None, exception=True):  # 403
 
         class __Forbidden__(HttpResponseType.__ERROR__):  # 403
     
             def __init__(self, headers, data):
                 HttpResponseType.__ERROR__.__init__(self, '403 Forbidden', headers, data)
         
+        if headers == None: headers = []
         obj = __Forbidden__(headers, data)
         if exception: raise obj
         else: return obj 
     
     @classmethod
-    def NotFound(cls, data='not found', headers=[], exception=True):  # 404
+    def NotFound(cls, data='not found', headers=None, exception=True):  # 404
 
         class __NotFound__(HttpResponseType.__ERROR__):  # 404
     
             def __init__(self, headers, data):
                 HttpResponseType.__ERROR__.__init__(self, '404 Not Found', headers, data)
         
+        if headers == None: headers = []
         obj = __NotFound__(headers, data)
         if exception: raise obj
         else: return obj 
     
     @classmethod
-    def ServerError(cls, data='internal server error', headers=[], exception=True):  # 500
+    def ServerError(cls, data='internal server error', headers=None, exception=True):  # 500
 
         class __ServerError__(HttpResponseType.__ERROR__):
     
             def __init__(self, headers=[], data='internal server error'):
                 HttpResponseType.__ERROR__.__init__(self, '500 Internal Server Error', headers, data)
         
+        if headers == None: headers = []
         obj = __ServerError__(headers, data)
         if exception: raise obj
         else: return obj 
     
     @classmethod
-    def NotImplemented(cls, data='not implemented', headers=[], exception=True):  # 501
+    def NotImplemented(cls, data='not implemented', headers=None, exception=True):  # 501
 
         class __NotImplemented__(HttpResponseType.__ERROR__):
     
             def __init__(self, headers=[], data='not implemented'):
                 HttpResponseType.__ERROR__.__init__(self, '501 Not Implemented', headers, data)
         
+        if headers == None: headers = []
         obj = __NotImplemented__(headers, data)
         if exception: raise obj
         else: return obj 
