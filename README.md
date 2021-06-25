@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.1.2
+version : 1.1.3
 
-last change : raise condition, encoding
+last change : bytes decoding
 
 ## What is Pygics?
 

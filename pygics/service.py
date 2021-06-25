@@ -136,7 +136,9 @@ class Request:
             raw_data = request['wsgi.input'].read()
             if 'CONTENT_TYPE' in request:
                 content_type = request['CONTENT_TYPE'].lower()
-                if HttpContentType.AppJson in content_type: self.data = json.loads(str(raw_data))
+                if HttpContentType.AppJson in content_type:
+                    if isinstance(raw_data, bytes): self.data = json.loads(raw_data.decode('utf-8'))
+                    else: self.data = json.loads(str(raw_data))
                 elif HttpContentType.AppForm in content_type:
                     self.data = {}
                     data_split = str(raw_data).split('&')
