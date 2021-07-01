@@ -93,9 +93,9 @@ class Action(Inventory):
 
 class Request:
      
-    COOKIE_PARSER = re.compile('(?P<key>[\w\-\.]+)=(?P<val>\S+)', re.UNICODE)
-    QUERY_PARSER = re.compile('(?P<key>[\w\%]+)="?(?P<val>[\w\.\-\:\[\]]*)"?', re.UNICODE)
-    XFORM_PARSER = re.compile('(?P<key>[\w]+)=(?P<val>[\W\w\s]*)', re.UNICODE)
+    QUERY_PARSER = re.compile('\s*(?P<key>[\w\%]+)="?(?P<val>[\w\.\-\:\[\]]*)"?\s*', re.UNICODE)
+    COOKIE_PARSER = re.compile('\s*(?P<key>[\w\-\.]+)=(?P<val>\S+)\s*', re.UNICODE)
+    XFORM_PARSER = re.compile('\s*(?P<key>[\w]+)=(?P<val>[\W\w\s]*)\s*', re.UNICODE)
      
     def __init__(self, request):
         self.request = request
