@@ -93,7 +93,7 @@ class Action(Inventory):
 
 class Request:
      
-    QUERY_PARSER = re.compile('\s*(?P<key>[\w\%]+)="?(?P<val>[\w\.\-\:\[\]]*)"?\s*', re.UNICODE)
+    QUERY_PARSER = re.compile('\s*(?P<key>[\w\%]+)="?(?P<val>[\w\/\.\-\:\(\)\{\}\[\]]*)"?\s*', re.UNICODE)
     COOKIE_PARSER = re.compile('\s*(?P<key>[\w\-\.]+)=(?P<val>\S+)\s*', re.UNICODE)
     XFORM_PARSER = re.compile('\s*(?P<key>[\w]+)=(?P<val>[\W\w\s]*)\s*', re.UNICODE)
      
@@ -141,7 +141,7 @@ class Request:
                     else: self.data = json.loads(str(raw_data))
                 elif HttpContentType.AppForm in content_type:
                     self.data = {}
-                    data_split = str(raw_data).split('&')
+                    data_split = str(raw_data.decode('utf-8')).split('&')
                     for data in data_split:
                         kv = Request.XFORM_PARSER.match(urllib.parse.unquote_plus(data))
                         if kv: self.data[kv.group('key')] = kv.group('val')
