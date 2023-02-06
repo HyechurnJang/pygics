@@ -19,7 +19,7 @@ def read(fname): return open(os.path.join(os.path.dirname(__file__), fname)).rea
 
 setup(
     name='pygics',
-    version='1.1.4',
+    version='1.2.0',
     license='Apache 2.0',
     author='Hyechurn Jang',
     author_email='jangh@vmware.com',

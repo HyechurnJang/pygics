@@ -2,9 +2,9 @@
 
 **PY**thon **G**event **I**nterface for **C**ommunication **S**ervice
 
-version : 1.1.4
+version : 1.2.0
 
-last change : query, cookie, xform parser update
+last change : query and bytes encoding
 
 ## What is Pygics?
 
